@@ -128,6 +128,8 @@ class CustomDataset(Dataset):
             name = p.split('/')[-1]
             n_folder = '/'.join(p.split('/')[-4:-1])
             self.clean += [torch.load(p.replace(n_folder,"clean"))]
+            print(p,p.replace(n_folder,"clean"))
+            print(torch.load(p).size(),torch.load(p.replace(n_folder,"clean")).size())
             
         
 
