@@ -1,6 +1,8 @@
 import torch, os
 import torch.nn as nn
+import numpy as np
 from torch.optim import Adam
+from torch.nn.utils.rnn import pad_sequence
 from util import get_filepaths
 from torch.utils.data import DataLoader
 from sklearn.model_selection import train_test_split
@@ -80,56 +82,53 @@ def Load_model(args,model,checkpoint_path,model_path):
         
     return model,epoch,best_loss,optimizer,criterion,device
 
+# [Yo]
+def pad_collate(batch):
+    (xx, yy) = zip(*batch)
+    x_lens = [len(x) for x in xx]
+    y_lens = [len(y) for y in yy]
+
+    xx_pad = pad_sequence(xx, batch_first=True, padding_value=0)
+    yy_pad = pad_sequence(yy, batch_first=True, padding_value=0)
+
+    return xx_pad, yy_pad, x_lens, y_lens
+
 
 def Load_data(args, Train_path):
-    
-#     torch.set_num_threads(torch.get_num_threads()//2)
+
     train_paths = []
     val_paths = []
     #[Neil] Modify fea_path
-    fea_path = '/mnt/Data/user_vol_2/user_neillu/E2E_Spec/training/'
-    folders = os.listdir(fea_path)
-    for folder in folders:
-        file_paths = get_filepaths(os.path.join(fea_path,folder),ftype='.pt')
-        train_path,val_path = train_test_split(file_paths,test_size=10,random_state=999)
-        train_paths = train_paths+train_path
-        # print(train_paths)
-        val_paths = val_paths+val_path
+    #[Yo] Modify n_files, test/train split(test_size set to  0.1)
+    n_files = np.array([x[:-1] for x in open(Train_path).readlines() if str(x.split('/')[-3])[0]=='n'])
+    train_paths,val_paths = train_test_split(n_files[:500],test_size=0.1,random_state=999)
+    
     train_dataset, val_dataset = CustomDataset(train_paths), CustomDataset(val_paths)
+    # [Yo] Add padding collate fn
     loader = { 
         'train':DataLoader(train_dataset, batch_size=args.batch_size,
-                              shuffle=True, num_workers=8, pin_memory=True),
+                              shuffle=True, num_workers=8, pin_memory=True, collate_fn=pad_collate),
         'val'  :DataLoader(val_dataset, batch_size=args.batch_size,
-                            num_workers=8, pin_memory=True)
+                            num_workers=8, pin_memory=True, collate_fn=pad_collate)
     }
 
     return loader
 
-def load_torch(path):
-    return torch.load(path)
-
 class CustomDataset(Dataset):
 
     def __init__(self, paths):   # initial logic happens like transform
-
-#         self.n_paths = paths
-        #[Neil] Modify for CustomDataset
+        #[Neil] Modify CustomDataset
+        #[Yo] Modify CustomDataset
         self.n_paths = paths
         self.noisy = []
         self.clean = []
-        for p in self.n_paths:
-            self.noisy += [load_torch(p)]
-            name = p.split('/')[-1].split('_')[0] + '_' + p.split('/')[-1].split('_')[1] + '_' + p.split('/')[-1].split('_')[-1] 
-            self.clean += [load_torch(p.replace("train_noisy","train_clean").replace(p.split('/')[-1],name))]
+        print('Reading data...')
+        for _,p in enumerate(tqdm(self.n_paths)):
+            self.noisy += [torch.load(p)]
+            name = p.split('/')[-1]
+            n_folder = '/'.join(p.split('/')[-4:-1])
+            self.clean += [torch.load(p.replace(n_folder,"clean"))]
         
-        # with parallel_backend('multiprocessing', n_jobs=64):
-        #     self.n_paths = Parallel()(delayed(load_torch)(path) for path in tqdm(paths))
-        #     print(self.n_paths)
-        # self.noisy,self.clean,_ = zip(*self.n_paths)
-
-
-#         self.c_paths = [os.path.join(clean_path,'clean_'+'_'.join((noisy_path.split('/')[-1].split('_')[-2:])) ) for noisy_path in paths]
-
 
     def __getitem__(self, index):
 
@@ -137,6 +136,7 @@ class CustomDataset(Dataset):
 #         clean = torch.load(self.c_paths[index])  
 
 #         return noisy,clean,target
+        
         return self.noisy[index],self.clean[index]
 
     def __len__(self):  # return count of sample we have

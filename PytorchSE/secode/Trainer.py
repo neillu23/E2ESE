@@ -83,7 +83,12 @@ class Trainer:
 #             self.model[key].train()
 #         noisy, clean = self.loader['train'].next()
 #         while noisy is not None:
-        for noisy, clean in self.loader['train']:
+        #[Yo]
+        print(next(iter(self.loader['train'])))
+        exit()
+        for (noisy, clean) in self.loader['train']:
+            print('noisy',noisy)
+            print('clean',clean)
 #             self.step += 1
 
             self._train_step(noisy, clean)
@@ -162,13 +167,15 @@ class Trainer:
     
             
     def test(self):
+        #[Yo] Modify Test_path
         # load model
         self.model.eval()
 #         self.score_path = './Result/Test_Noisy.csv'
         checkpoint = torch.load(self.model_path)
         self.model.load_state_dict(checkpoint['model'])
         
-        
+        print(self.Test_path['noisy'])
+        exit()
         test_folders = get_filepaths(self.Test_path['noisy'])
         clean_path = self.Test_path['clean']
         check_folder(self.score_path)

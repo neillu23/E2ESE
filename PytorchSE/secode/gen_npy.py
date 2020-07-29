@@ -10,8 +10,8 @@ from util import check_folder
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
-clean_list="/home/neillu/Desktop/Workspace/yo/PytorchSE/secode/TIMIT_filelist.txt"
-noisy_list="/home/neillu/Desktop/Workspace/yo/PytorchSE/secode/TIMIT_noisy_40hr_wav_filelist.txt"
+clean_list="/home/neillu/Desktop/Workspace/yo/End2End/PytorchSE/secode/TIMIT_filelist.txt"
+noisy_list="/home/neillu/Desktop/Workspace/yo/End2End/PytorchSE/secode/TIMIT_noisy_40hr_wav_filelist.txt"
 out_path="/home/neillu/Desktop/Workspace/TIMIT_spec/"
 #dev_list = "/mnt/Data/user_vol_2/user_neillu/DNS_Challenge_timit/dv_timit"
 #test_list = "/mnt/Data/user_vol_2/user_neillu/DNS_Challenge_timit/ts_timit_new_all"
@@ -115,7 +115,7 @@ if __name__ == '__main__':
     n_frame = 64
     n_files = np.array([x[:-1] for x in open(noisy_list).readlines()])
     c_files = np.array([x[:-1] for x in open(clean_list).readlines()])
-
+    n_ptfiles =[]
     c_dict={}
     for i,c_ in enumerate(tqdm(c_files)):
         c_tmp=c_.replace('.WAV','').split('/')
@@ -147,6 +147,13 @@ if __name__ == '__main__':
         n_data,_,_ = make_spectrum(y= n_wav)
         check_folder(out_name_n)
         torch.save(torch.from_numpy(n_data.transpose()),out_name_n)
+        n_ptfiles.append(out_name_n)
+
+    with open('./TIMIT_noisy_40hr_spec_filelist.txt', 'w') as f:
+        for item in n_ptfiles:
+            f.write('%s\n' % item)
+    
+
 
     # train_path = '../Noisy_adaptive/
     # mkl.set_num_threads(1)

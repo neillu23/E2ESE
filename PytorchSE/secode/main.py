@@ -1,6 +1,5 @@
 import os, argparse, torch, random, sys
 from Trainer import Trainer
-# from Trainer_IRM import Trainer_IRM
 from Load_model import Load_model, Load_data
 from util import check_folder
 from tensorboardX import SummaryWriter
@@ -8,7 +7,7 @@ import torch.backends.cudnn as cudnn
 import pandas as pd
 import pdb
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "4"
+#os.environ["CUDA_VISIBLE_DEVICES"] = "4"
 # fix random
 SEED = 999
 random.seed(SEED)
@@ -19,15 +18,10 @@ cudnn.deterministic = True
 # data path
 
 #[Neil] Modify Train_path but not used?
-Train_path = {
-    'noisy':'/mnt/Data/user_vol_2/user_neillu/E2E_Spec/training/train_noisy/',
-    'clean':'/mnt/Data/user_vol_2/user_neillu/E2E_Spec/training/train_clean/'
-    }
-Test_path = {
-    'noisy':'/home/khhung/DNS-Challenge/datasets/test_set/synthetic/no_reverb/noisy',
-    'clean':'/home/khhung/DNS-Challenge/datasets/test_set/synthetic/no_reverb/clean'
-    }
+#[Yo] Modify Train_path, Test_path: 
 
+Train_path = './TIMIT_noisy_40hr_spec_filelist.txt'
+Test_path = {'noisy':'./TIMIT_noisy_40hr_wav_filelist.txt ','clean':'./TIMIT_filelist.txt'}
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -77,7 +71,7 @@ if __name__ == '__main__':
     checkpoint_path,model_path,score_path = get_path(args)
     
     # tensorboard
-    writer = SummaryWriter('/home/neillu/End2End/logs')
+    writer = SummaryWriter('./logs')
 #     writer = SummaryWriter(f'{args.logs}/{args.model}/{args.optim}/{args.optim}/{args.loss_fn}')
 #     exec ("from models.{} import {} as model".format(args.model.split('_')[0], args.model))
 #     pdb.set_trace()
@@ -91,9 +85,7 @@ if __name__ == '__main__':
         args.epochs = args.re_epochs 
         checkpoint_path,model_path,score_path = get_path(args)
         
-    Trainer = Trainer_IRM(model, args.epochs, epoch, best_loss, optimizer, 
-                      criterion, device, loader, Test_path, writer, model_path, 
-                    score_path, args) if args.target=='IRM' else Trainer(model, args.epochs, epoch, best_loss, optimizer, 
+    Trainer = Trainer(model, args.epochs, epoch, best_loss, optimizer, 
                       criterion, device, loader, Test_path, writer, model_path, score_path, args)
     try:
         if args.mode == 'train':
