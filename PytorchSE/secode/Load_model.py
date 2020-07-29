@@ -104,7 +104,7 @@ def Load_data(args, Train_path):
     train_paths,val_paths = train_test_split(n_files[:500],test_size=0.1,random_state=999)
     
     train_dataset, val_dataset = CustomDataset(train_paths), CustomDataset(val_paths)
-    # [Yo] Add padding collate fn
+    # [Yo] Add padding collate_fn
     loader = { 
         'train':DataLoader(train_dataset, batch_size=args.batch_size,
                               shuffle=True, num_workers=8, pin_memory=True, collate_fn=pad_collate),
@@ -128,6 +128,7 @@ class CustomDataset(Dataset):
             name = p.split('/')[-1]
             n_folder = '/'.join(p.split('/')[-4:-1])
             self.clean += [torch.load(p.replace(n_folder,"clean"))]
+            
         
 
     def __getitem__(self, index):
