@@ -49,6 +49,12 @@ class Trainer:
         # print("B",torch.split(data,slice_size,dim=1))
         # # print("C",torch.split(data,slice_size,dim=1)[:-1])
         #[Neil] Modify for CustomDataset
+        '''
+        print('slice_data.data.size()',data.size())
+        print('torch.split(data,slice_size,dim=1)',len(torch.split(data,slice_size,dim=1)))
+        for i in torch.split(data,slice_size,dim=1):
+            print(i.size())
+        '''
         data = torch.cat(torch.split(data,slice_size,dim=1),dim=0)
         # data = torch.cat(torch.split(data,slice_size,dim=1)[:-1],dim=0)
 #         index = torch.randperm(data.shape[0])
@@ -60,8 +66,12 @@ class Trainer:
         # print("noisy:",noisy)
         # print("clean:",clean)
         noisy, clean = noisy.to(device), clean.to(device)
+        #[Yo] why slice data??
         noisy, clean = self.slice_data(noisy), self.slice_data(clean)
 #         pdb.set_trace()
+        print('noisy.size()',noisy.size())
+        print('clean.size()',clean.size())
+
         pred = self.model(noisy)
         loss = self.criterion(pred, clean)
         self.train_loss += loss.item()
@@ -83,12 +93,13 @@ class Trainer:
 #             self.model[key].train()
 #         noisy, clean = self.loader['train'].next()
 #         while noisy is not None:
+        
         #[Yo]
-        print(next(iter(self.loader['train'])))
-        exit()
-        for (noisy, clean) in self.loader['train']:
-            print('noisy',noisy)
-            print('clean',clean)
+        for noisy, clean, n_len, c_len in self.loader['train']:
+            print(n_len, c_len)
+            #### [Yo] The lengths of noisy & clean speech did not match???
+            exit()
+            
 #             self.step += 1
 
             self._train_step(noisy, clean)
