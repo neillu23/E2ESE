@@ -129,13 +129,15 @@ if __name__ == '__main__':
         n_folder = n_.split('/')[-3]+ '/' + n_.split('/')[-2]
         name=name.replace('.wav','')
         c_fn=name.split('_')[0]+'/'+name.split('_')[1]+'.WAV'
+        out_name_c = os.path.join(out_path+'clean/', name+'.pt')
+        out_name_n = out_name_c.replace('clean','noisy/'+n_folder)
         
         if name in c_dict:
             c_folder=c_dict.pop(name)
             c_ = os.path.join(c_folder, c_fn)
             c_wav,c_sr = librosa.load(c_,sr=16000)
             c_data,_,_ = make_spectrum(y= c_wav)
-            out_name_c = os.path.join(out_path+'clean/', name+'.pt')
+            
             check_folder(out_name_c)
             torch.save(torch.from_numpy(c_data.transpose()),out_name_c)
         
@@ -143,8 +145,10 @@ if __name__ == '__main__':
         n_wav,sr = librosa.load(n_,sr=16000)
         
 
-        out_name_n = out_name_c.replace('clean','noisy/'+n_folder)
+        
         n_data,_,_ = make_spectrum(y= n_wav)
+        #print(n_,n_data.shape,c_,c_data.shape)
+        #assert(n_data.shape[1] == c_data.shape[1])
         check_folder(out_name_n)
         torch.save(torch.from_numpy(n_data.transpose()),out_name_n)
         n_ptfiles.append(out_name_n)
