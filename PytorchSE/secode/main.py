@@ -3,6 +3,7 @@ from Trainer import Trainer
 from Load_model import Load_model, Load_data
 from util import check_folder
 from tensorboardX import SummaryWriter
+from CombinedModel import CombinedModel
 import torch.backends.cudnn as cudnn
 import pandas as pd
 import pdb
@@ -31,7 +32,11 @@ def get_args():
     parser.add_argument('--lr', type=float, default=0.00005)
     parser.add_argument('--loss_fn', type=str, default='l1')
     parser.add_argument('--optim', type=str, default='adam')
-    parser.add_argument('--model', type=str, default='transformerencoder_03') 
+    parser.add_argument('--SEmodel', type=str, default='transformerencoder_03') 
+    # [Yo]
+    parser.add_argument('--ASRmodel_path', type=str, default='./model.acc.best.entire.pth')
+    parser.add_argument('--alpha', type=float, default=0.5) 
+    #####
     parser.add_argument('--gpu', type=str, default='0')
     parser.add_argument('--target', type=str, default='MAP') #'MAP' or 'IRM'
     parser.add_argument('--task', type=str, default='DNS_SE') 
@@ -44,13 +49,13 @@ def get_args():
 
 def get_path(args):
     
-    checkpoint_path = f'./checkpoint/{args.model}_{args.target}_epochs{args.epochs}' \
+    checkpoint_path = f'./checkpoint/{args.SEmodel}_{args.target}_epochs{args.epochs}' \
                     f'_{args.optim}_{args.loss_fn}_batch{args.batch_size}_'\
                     f'lr{args.lr}.pth.tar'
-    model_path = f'./save_model/{args.model}_{args.target}_epochs{args.epochs}' \
+    model_path = f'./save_model/{args.SEmodel}_{args.target}_epochs{args.epochs}' \
                     f'_{args.optim}_{args.loss_fn}_batch{args.batch_size}_'\
                     f'lr{args.lr}.pth.tar'
-    score_path = f'./Result/{args.model}_{args.target}_epochs{args.epochs}' \
+    score_path = f'./Result/{args.SEmodel}_{args.target}_epochs{args.epochs}' \
                     f'_{args.optim}_{args.loss_fn}_batch{args.batch_size}_'\
                     f'lr{args.lr}.csv'
     
@@ -72,15 +77,21 @@ if __name__ == '__main__':
     
     # tensorboard
     writer = SummaryWriter('./logs')
-#     writer = SummaryWriter(f'{args.logs}/{args.model}/{args.optim}/{args.optim}/{args.loss_fn}')
-#     exec ("from models.{} import {} as model".format(args.model.split('_')[0], args.model))
+#     writer = SummaryWriter(f'{args.logs}/{args.SEmodel}/{args.optim}/{args.optim}/{args.loss_fn}')
+#     exec ("from models.{} import {} as model".format(args.SEmodel.split('_')[0], args.SEmodel))
 #     pdb.set_trace()
 
+    #[Yo]
+    ASRmodel = torch.load(args.ASRmodel_path)
+    exec (f"from models.{args.SEmodel.split('_')[0]} import {args.SEmodel} as SEmodel")
+    SEmodel     = SEmodel()
 
-    exec (f"from models.{args.model.split('_')[0]} import {args.model} as model")
-    model     = model()
-    model, epoch, best_loss, optimizer, criterion, device = Load_model(args,model,checkpoint_path, model_path)
+    SEmodel, epoch, best_loss, optimizer, criterion, device = Load_model(args,SEmodel,checkpoint_path, model_path)
     loader = Load_data(args, Train_path)
+
+    model = CombinedModel(SEmodel, ASRmodel, criterion, args.alpha)
+
+
     if args.retrain:
         args.epochs = args.re_epochs 
         checkpoint_path,model_path,score_path = get_path(args)

@@ -1,24 +1,23 @@
 import torch.nn as nn
 import numpy
+from data_prepare import data_prepare
 
 class CombinedModel(nn.Module):
-    def __init__(self, SEmodel, ASRmodel, criterion, alpha):
+    def __init__(self, SEmodel, ASRmodel, SEcriterion, alpha):
         super(CombinedModel, self).__init__()
         self.SEmodel = SEmodel
         self.ASRmodel = ASRmodel
-        self.criterion = criterion
+        self.SEcriterion = SEcriterion
         self.alpha = alpha
-        #self.preprocess = nn.Sequential()
+        self.Fbank = Fbank()
 
         
-    def forward(self, a,b,c):
-        SEloss=0
-        '''
-        enhanced = self.SEmodel(noisy)
-        SEloss = self.criterion(enhanced, clean)
-        x = data_prepare(preprocess(enhanced))
-        '''
-        ASRloss = self.ASRmodel(a,b,c)
+    def forward(self, x, a,b,c):
+        enhanced_x = self.SEmodel(x)
+        SEloss = self.SEcriterion(enhanced_x, clean)
+        #data = data_prepare(self.Fbank(enhanced_x))
+        #ASRloss = self.ASRmodel(data[:][0],data[:][1],data[:][2])
+        ASRloss=0
         loss = SEloss + self.alpha * ASRloss
         return loss
 

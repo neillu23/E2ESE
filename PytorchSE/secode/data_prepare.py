@@ -6,17 +6,16 @@ from espnet.asr.pytorch_backend.asr import CustomConverter
 from espnet.utils.io_utils import LoadInputsAndTargets
 from CombinedModel import CombinedModel
 
+'''
+with open(jsonpath, "rb") as f:
+       train_feature = json.load(f)["utts"]
 
-def data_prepare(jsonpath):
+'''
+
+def data_prepare(train_feature):
 
     converter = CustomConverter(subsampling_factor=1, dtype=torch.float32)
-
-
-    with open(jsonpath, "rb") as f:
-    #with open("/home/eyelab/yo/se/espnet/egs/timit/asr1/dump/train_nodev/deltafalse/data.json", "rb") as f:
-        train_json = json.load(f)["utts"]
-        train = make_batchset(train_json,batch_size=30)
-
+    train = make_batchset(train_feature,batch_size=30)
     load_tr = LoadInputsAndTargets(
         mode="asr",
         load_output=True,

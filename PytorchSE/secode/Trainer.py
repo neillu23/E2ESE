@@ -68,10 +68,14 @@ class Trainer:
         #[Yo] why slice data??
         #noisy, clean = self.slice_data(noisy), self.slice_data(clean)
 #         pdb.set_trace()
-    
 
+        # Change loss
+        loss = self.model(noisy)
+    
+        '''
         pred = self.model(noisy)
         loss = self.criterion(pred, clean)
+        '''
         self.train_loss += loss.item()
         self.optimizer.zero_grad()
         loss.backward()
@@ -110,9 +114,9 @@ class Trainer:
     def _val_step(self, noisy, clean):
         device = self.device
         noisy, clean = noisy.to(device), clean.to(device)
-        # [Yo]
+        # [Yo] Delete data slicing, change pred
         #noisy, clean = self.slice_data(noisy), self.slice_data(clean)
-        pred = self.model(noisy)
+        pred = self.model.SEmodel(noisy)
         loss = self.criterion(pred, clean)
         self.val_loss += loss.item()
         
@@ -148,9 +152,10 @@ class Trainer:
         c_data,sr = librosa.load(os.path.join(clean_path,'clean_'+'_'.join((test_file.split('/')[-1].split('_')[-2:])) ),sr=16000)
         n_data,n_phase,n_len = make_spectrum(y=n_data)
         n_data = torch.from_numpy(n_data.transpose()).to(self.device).unsqueeze(0)
-        pred = self.model(n_data).cpu().detach().numpy()
+        #[Yo] Change prediction
+        pred = self.model.SEmodel(n_data).cpu().detach().numpy()
         enhanced = recons_spec_phase(pred.squeeze().transpose(),n_phase,n_len)
-        out_path = f"./Enhanced/{self.model.__class__.__name__}/{test_file.split('/')[-1]}"
+        out_path = f"./Enhanced/{self.model.SEmodel.__class__.__name__}/{test_file.split('/')[-1]}"
         check_folder(out_path)
         audiowrite(out_path,16000,(enhanced* maxv).astype(np.int16))
 
@@ -167,8 +172,8 @@ class Trainer:
         while self.epoch < self.epochs:
             self._train_epoch()
             self._val_epoch()
-            self.writer.add_scalars(f'{self.args.task}/{self.model.__class__.__name__}_{self.args.optim}_{self.args.loss_fn}', {'train': self.train_loss},self.epoch)
-            self.writer.add_scalars(f'{self.args.task}/{self.model.__class__.__name__}_{self.args.optim}_{self.args.loss_fn}', {'val': self.val_loss},self.epoch)
+            self.writer.add_scalars(f'{self.args.task}/{self.model.SEmodel.__class__.__name__}_{self.args.optim}_{self.args.loss_fn}', {'train': self.train_loss},self.epoch)
+            self.writer.add_scalars(f'{self.args.task}/{self.model.SEmodel.__class__.__name__}_{self.args.optim}_{self.args.loss_fn}', {'val': self.val_loss},self.epoch)
             self.epoch += 1
             
     
