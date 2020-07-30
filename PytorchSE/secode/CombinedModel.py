@@ -40,13 +40,15 @@ class Fbank(nn.Module):
             f_m_minus = int(bin[m - 1])   # left
             f_m = int(bin[m])             # center
             f_m_plus = int(bin[m + 1])    # right
-
             for k in range(f_m_minus, f_m):
                 fbank[m - 1, k] = (k - bin[m - 1]) / (bin[m] - bin[m - 1])
             for k in range(f_m, f_m_plus):
                 fbank[m - 1, k] = (bin[m + 1] - k) / (bin[m + 1] - bin[m])
         #need to modify numpy.dot to torch
-        filter_banks = numpy.dot(pow_frames, fbank.T)
-        filter_banks = numpy.where(filter_banks == 0, numpy.finfo(float).eps, filter_banks)  # Numerical Stability
-        filter_banks = 20 * numpy.log10(filter_banks)  # dB
+        fbank = torch.tensor(fbank, dtype=torch.float)
+        filter_banks = torch.matmul(pow_frames, torch.transpose(fbank, 0, 1))
+        # filter_banks = numpy.where(filter_banks == 0, numpy.finfo(float).eps, filter_banks)  # Numerical Stability
+        # filter_banks = 20 * torch.log(filter_banks)  # dB
+        m = torch.nn.LayerNorm(filter_banks.size()[1:])
+        filter_banks = m(filter_banks)
         return filter_banks
