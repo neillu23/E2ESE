@@ -63,14 +63,12 @@ class Trainer:
 
     def _train_step(self, noisy, clean):
         device = self.device
-        # print("noisy:",noisy)
-        # print("clean:",clean)
         noisy, clean = noisy.to(device), clean.to(device)
+        
         #[Yo] why slice data??
-        noisy, clean = self.slice_data(noisy), self.slice_data(clean)
+        #noisy, clean = self.slice_data(noisy), self.slice_data(clean)
 #         pdb.set_trace()
-        print('noisy.size()',noisy.size())
-        print('clean.size()',clean.size())
+    
 
         pred = self.model(noisy)
         loss = self.criterion(pred, clean)
@@ -96,9 +94,6 @@ class Trainer:
         
         #[Yo]
         for noisy, clean, n_len, c_len in self.loader['train']:
-            print(n_len, c_len)
-            #### [Yo] The lengths of noisy & clean speech did not match???
-            exit()
             
 #             self.step += 1
 
@@ -115,7 +110,8 @@ class Trainer:
     def _val_step(self, noisy, clean):
         device = self.device
         noisy, clean = noisy.to(device), clean.to(device)
-        noisy, clean = self.slice_data(noisy), self.slice_data(clean)
+        # [Yo]
+        #noisy, clean = self.slice_data(noisy), self.slice_data(clean)
         pred = self.model(noisy)
         loss = self.criterion(pred, clean)
         self.val_loss += loss.item()
@@ -127,7 +123,7 @@ class Trainer:
         self.model.eval()
 #         noisy, clean = self.loader['val'].next()
 #         while noisy is not None:
-        for noisy, clean in self.loader['val']:
+        for noisy, clean, n_len, c_len in self.loader['val']:
             self._val_step(noisy, clean)
             progress.update(1)
 #             noisy, clean = self.loader['val'].next()
