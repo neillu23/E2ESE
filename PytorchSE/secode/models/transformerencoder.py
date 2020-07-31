@@ -192,8 +192,8 @@ class transformerencoder_03(nn.Module):
         super(transformerencoder_03,self).__init__()
 
         num_hidden_layers   = 8
-        input_feature_size  = 257
-        feature_size        = 257
+        input_feature_size  = 201
+        feature_size        = 201
         intermediate_size   = 512
         dropout_rate        = 0.1
         num_heads           = 8
