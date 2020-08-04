@@ -72,6 +72,7 @@ class Trainer:
         loss.backward()
         self.optimizer.step()
 
+
     def _train_epoch(self):
         self.train_loss = 0
         progress = tqdm(total=len(self.loader['train']), desc=f'Epoch {self.epoch} / Epoch {self.epochs} | train', unit='step')

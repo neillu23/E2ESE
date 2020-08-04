@@ -36,6 +36,7 @@ def get_args():
     #####
     parser.add_argument('--ASRmodel_path', type=str, default='./model.acc.best.entire.pth')
     parser.add_argument('--alpha', type=float, default=0.5) 
+    #loss = SEloss + self.alpha * ASRloss
     parser.add_argument('--asr_y_path', type=str, default='./file_y.npy') 
     #####
     parser.add_argument('--gpu', type=str, default='0')
@@ -82,15 +83,17 @@ if __name__ == '__main__':
 #     pdb.set_trace()
 
     ASRmodel = torch.load(args.ASRmodel_path)
+    
     exec (f"from models.{args.SEmodel.split('_')[0]} import {args.SEmodel} as SEmodel")
     SEmodel     = SEmodel()
-
     SEmodel, epoch, best_loss, optimizer, criterion, device = Load_model(args,SEmodel,checkpoint_path, model_path)
     loader = Load_data(args, Train_path)
 
     model = CombinedModel(SEmodel, ASRmodel, criterion, args.alpha)
 
-
+    for param in model.ASRmodel.parameters():
+        param.requires_grad = False
+    
     if args.retrain:
         args.epochs = args.re_epochs 
         checkpoint_path,model_path,score_path = get_path(args)
