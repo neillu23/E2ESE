@@ -35,7 +35,7 @@ def get_args():
     parser.add_argument('--SEmodel', type=str, default='transformerencoder_03') 
     #####
     parser.add_argument('--ASRmodel_path', type=str, default='./model.acc.best.entire.pth')
-    parser.add_argument('--alpha', type=float, default=0.5) 
+    parser.add_argument('--alpha', type=float, default=0.0002) 
     #loss = SEloss + self.alpha * ASRloss
     parser.add_argument('--asr_y_path', type=str, default='./file_y.npy') 
     #####
