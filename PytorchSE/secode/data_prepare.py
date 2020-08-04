@@ -1,21 +1,17 @@
-import torch
 import json
 from espnet.utils.training.batchfy import make_batchset
 from espnet.utils.dataset import TransformDataset
 from espnet.asr.pytorch_backend.asr import CustomConverter
 from espnet.utils.io_utils import LoadInputsAndTargets
-from CombinedModel import CombinedModel
-
-'''
-with open(jsonpath, "rb") as f:
-       train_feature = json.load(f)["utts"]
-
-'''
+import numpy as np
+import itertools 
+from tqdm import tqdm
 
 def data_prepare(train_feature):
 
-    converter = CustomConverter(subsampling_factor=1, dtype=torch.float32)
-    train = make_batchset(train_feature,batch_size=30)
+    converter = CustomConverter(subsampling_factor=1)
+    train = make_batchset(train_feature,batch_size=len(train_feature))
+    name=[train[0][i][0] for i in range(len(train_feature))]
     load_tr = LoadInputsAndTargets(
         mode="asr",
         load_output=True,
@@ -23,29 +19,31 @@ def data_prepare(train_feature):
         preprocess_args={"train": True},  # Switch the mode of preprocessing
         )
     dataset = TransformDataset(train, lambda data: converter([load_tr(data)]))
+    return dataset, name
 
-    return dataset
-'''
-ASRmodel = torch.load("/home/eyelab/yo/se/espnet/egs/timit/asr1/exp/train_nodev_pytorch_train/results/model.acc.best_entire.pth")
-model = CombinedModel(None,ASRmodel,None,alpha=0.5)
-model.train()
 
-optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+def savetodic(jsonpath,dic):
+    with open(jsonpath, "rb") as f:
+        train_feature = json.load(f)["utts"]
+    dataset, name=data_prepare(train_feature)
 
-print('dataset.shape',len(dataset))
-for i in range(50):
-    optimizer.zero_grad()
-    x = dataset[i][0]
-    ilen = dataset[i][1]
-    y = dataset[i][2]
+    for i in tqdm(range(len(name))):
+        ilen = dataset[0][1][i]
+        y = dataset[0][2][i]
+        dic[name[i]]=[ilen,y]
     
-    
-    loss=model(x.cuda(),ilen.cuda(),y.cuda())
-    print("loss :",loss)
-    #loss = self.model(*x).mean() / self.accum_grad
+    return dic
 
-    loss.backward()
-    optimizer.step()
-'''
+if __name__ == "__main__":
+    dic={}
+    jsonpath1='./data_test.json'
+    jsonpath2='./data_train_dev.json'
+    jsonpath3='./data_train_nodev.json'
 
+    dic=savetodic(jsonpath1,dic)
+    dic=savetodic(jsonpath2,dic)
+    dic=savetodic(jsonpath3,dic)
+
+    np.save('file_y.npy', dic) 
+   
 

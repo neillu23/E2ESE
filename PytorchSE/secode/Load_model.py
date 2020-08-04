@@ -49,8 +49,6 @@ def load_checkoutpoint(model,optimizer,checkpoint_path):
 
 def Load_model(args,model,checkpoint_path,model_path):
     
-
-    
     criterion = {
         'mse'     : nn.MSELoss(),
         'l1'      : nn.L1Loss(),
@@ -84,14 +82,20 @@ def Load_model(args,model,checkpoint_path,model_path):
 
 # [Yo]
 def pad_collate(batch):
-    (xx, yy) = zip(*batch)
-    x_lens = [len(x) for x in xx]
-    y_lens = [len(y) for y in yy]
+    (xx, yy, asr_l, asr_y) = zip(*batch)
+
+    ind=sorted(range(len(list(asr_l))), key=lambda k: list(asr_l)[k], reverse=True)
+    
+    xx=[xx[i] for i in ind]
+    yy=[yy[i] for i in ind]
+    asr_l=[asr_l[i] for i in ind]
+    asr_y=[asr_y[i] for i in ind]
 
     xx_pad = pad_sequence(xx, batch_first=True, padding_value=0)
     yy_pad = pad_sequence(yy, batch_first=True, padding_value=0)
-
-    return xx_pad, yy_pad, x_lens, y_lens
+    asr_y_pad = pad_sequence(asr_y, batch_first=True, padding_value=0)
+    
+    return xx_pad, yy_pad, torch.tensor(asr_l), asr_y_pad
 
 
 def Load_data(args, Train_path):
@@ -103,7 +107,7 @@ def Load_data(args, Train_path):
     n_files = np.array([x[:-1] for x in open(Train_path).readlines() if str(x.split('/')[-3])[0]=='n'])
     train_paths,val_paths = train_test_split(n_files[:500],test_size=0.1,random_state=999)
     
-    train_dataset, val_dataset = CustomDataset(train_paths), CustomDataset(val_paths)
+    train_dataset, val_dataset = CustomDataset(train_paths, args.asr_y_path), CustomDataset(val_paths, args.asr_y_path)
     # [Yo] Add padding collate_fn
     loader = { 
         'train':DataLoader(train_dataset, batch_size=args.batch_size,
@@ -116,32 +120,31 @@ def Load_data(args, Train_path):
 
 class CustomDataset(Dataset):
 
-    def __init__(self, paths):   # initial logic happens like transform
+    def __init__(self, paths, asr_y_path):   # initial logic happens like transform
         #[Neil] Modify CustomDataset
         #[Yo] Modify CustomDataset
         self.n_paths = paths
+        self.asr_y_path = asr_y_path
         self.noisy = []
         self.clean = []
+        self.asr_ilen = []
+        self.ars_y = []
         print('Reading data...')
+        asr_dict = np.load(asr_y_path,allow_pickle='TRUE').item()
+        
         for _,p in enumerate(tqdm(self.n_paths)):
             self.noisy += [torch.load(p)]
-            name = p.split('/')[-1]
             n_folder = '/'.join(p.split('/')[-4:-1])
             self.clean += [torch.load(p.replace(n_folder,"clean"))]
-            
-        
+
+            name = p.split('/')[-1].replace('.pt','')
+            self.asr_ilen += [asr_dict[name][0]]
+            self.ars_y += [asr_dict[name][1]]
 
     def __getitem__(self, index):
+        return self.noisy[index], self.clean[index], self.asr_ilen[index], self.ars_y[index]
 
-#         noisy,clean,target = torch.load(self.n_paths[index])
-#         clean = torch.load(self.c_paths[index])  
-
-#         return noisy,clean,target
-        
-        return self.noisy[index],self.clean[index]
-
-    def __len__(self):  # return count of sample we have
-        
+    def __len__(self):
         return len(self.n_paths)
 
 

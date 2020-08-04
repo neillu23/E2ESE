@@ -28,14 +28,15 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--mode', type=str, default='train')
     parser.add_argument('--epochs', type=int, default=400)
-    parser.add_argument('--batch_size', type=int, default=8)  
+    parser.add_argument('--batch_size', type=int, default=4)  
     parser.add_argument('--lr', type=float, default=0.00005)
     parser.add_argument('--loss_fn', type=str, default='l1')
     parser.add_argument('--optim', type=str, default='adam')
     parser.add_argument('--SEmodel', type=str, default='transformerencoder_03') 
-    # [Yo]
+    #####
     parser.add_argument('--ASRmodel_path', type=str, default='./model.acc.best.entire.pth')
     parser.add_argument('--alpha', type=float, default=0.5) 
+    parser.add_argument('--asr_y_path', type=str, default='./file_y.npy') 
     #####
     parser.add_argument('--gpu', type=str, default='0')
     parser.add_argument('--target', type=str, default='MAP') #'MAP' or 'IRM'
@@ -67,8 +68,7 @@ if __name__ == '__main__':
     cwd = os.path.dirname(os.path.abspath(__file__))
     print(cwd)
     print(SEED)
-    
-    
+       
     # get parameter
     args = get_args()
     
@@ -81,7 +81,6 @@ if __name__ == '__main__':
 #     exec ("from models.{} import {} as model".format(args.SEmodel.split('_')[0], args.SEmodel))
 #     pdb.set_trace()
 
-    #[Yo]
     ASRmodel = torch.load(args.ASRmodel_path)
     exec (f"from models.{args.SEmodel.split('_')[0]} import {args.SEmodel} as SEmodel")
     SEmodel     = SEmodel()

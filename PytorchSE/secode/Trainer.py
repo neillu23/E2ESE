@@ -28,7 +28,9 @@ class Trainer:
         self.Test_path = Test_path
 
         self.train_loss = 0
+        self.SEtrain_loss = 0
         self.val_loss = 0
+        self.SEval_loss = 0
         self.writer = writer
         self.model_path = model_path
         self.score_path = score_path
@@ -49,94 +51,72 @@ class Trainer:
         # print("B",torch.split(data,slice_size,dim=1))
         # # print("C",torch.split(data,slice_size,dim=1)[:-1])
         #[Neil] Modify for CustomDataset
-        '''
-        print('slice_data.data.size()',data.size())
-        print('torch.split(data,slice_size,dim=1)',len(torch.split(data,slice_size,dim=1)))
-        for i in torch.split(data,slice_size,dim=1):
-            print(i.size())
-        '''
         data = torch.cat(torch.split(data,slice_size,dim=1),dim=0)
         # data = torch.cat(torch.split(data,slice_size,dim=1)[:-1],dim=0)
 #         index = torch.randperm(data.shape[0])
 #         return data[index]
         return data
 
-    def _train_step(self, noisy, clean):
+    def _train_step(self, noisy, clean, ilen, asr_y):
         device = self.device
-        noisy, clean = noisy.to(device), clean.to(device)
+        noisy, clean, ilen, asr_y = noisy.to(device), clean.to(device), ilen.to(device), asr_y.to(device)
         
-        #[Yo] why slice data??
-        #noisy, clean = self.slice_data(noisy), self.slice_data(clean)
-#         pdb.set_trace()
+        #[Yo] Change loss
+        loss = self.model(noisy, clean, ilen, asr_y)
+        pred = self.model.SEmodel(noisy)
+        SEloss = self.criterion(pred, clean)
 
-        # Change loss
-        loss = self.model(noisy)
-    
-        '''
-        pred = self.model(noisy)
-        loss = self.criterion(pred, clean)
-        '''
         self.train_loss += loss.item()
+        self.SEtrain_loss += SEloss.item()
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
-
-#             if USE_GRAD_NORM:
-#                 nn.utils.clip_grad_norm_(self.model['discriminator'].parameters(), DISCRIMINATOR_GRAD_NORM)
-#             self.optimizer['discriminator'].step()
-
 
     def _train_epoch(self):
         self.train_loss = 0
         progress = tqdm(total=len(self.loader['train']), desc=f'Epoch {self.epoch} / Epoch {self.epochs} | train', unit='step')
         self.model.train()
         
-#         for key in self.model.keys():
-#             self.model[key].train()
-#         noisy, clean = self.loader['train'].next()
-#         while noisy is not None:
-        
         #[Yo]
-        for noisy, clean, n_len, c_len in self.loader['train']:
+        for noisy, clean, ilen, asr_y in self.loader['train']:
             
-#             self.step += 1
-
-            self._train_step(noisy, clean)
+            self._train_step(noisy, clean, ilen, asr_y)
             progress.update(1)
-#             noisy, clean = self.loader['train'].next()
-            
+       
         progress.close()
         self.train_loss /= len(self.loader['train'])
-        print(f'train_loss:{self.train_loss}')
-        
+        self.SEtrain_loss /= len(self.loader['train'])
+        print(f'train_loss:{self.train_loss}, SEtrain_loss:{self.SEtrain_loss}')
+
     
 #     @torch.no_grad()
-    def _val_step(self, noisy, clean):
+    def _val_step(self, noisy, clean, ilen, asr_y):
         device = self.device
-        noisy, clean = noisy.to(device), clean.to(device)
+        noisy, clean, ilen, asr_y = noisy.to(device), clean.to(device), ilen.to(device), asr_y.to(device)
         # [Yo] Delete data slicing, change pred
         #noisy, clean = self.slice_data(noisy), self.slice_data(clean)
         pred = self.model.SEmodel(noisy)
-        loss = self.criterion(pred, clean)
-        self.val_loss += loss.item()
+        SEloss = self.criterion(pred, clean)
+        E2Eloss = self.model(noisy, clean, ilen, asr_y)
+        self.SEval_loss += SEloss.item()
+        self.val_loss += E2Eloss.item()
         
 
     def _val_epoch(self):
         self.val_loss = 0
         progress = tqdm(total=len(self.loader['val']), desc=f'Epoch {self.epoch} / Epoch {self.epochs} | valid', unit='step')
         self.model.eval()
-#         noisy, clean = self.loader['val'].next()
-#         while noisy is not None:
-        for noisy, clean, n_len, c_len in self.loader['val']:
-            self._val_step(noisy, clean)
+
+        for noisy, clean, ilen, asr_y in self.loader['val']:
+            self._val_step(noisy, clean, ilen, asr_y)
             progress.update(1)
-#             noisy, clean = self.loader['val'].next()
 
             
         progress.close()
 
         self.val_loss /= len(self.loader['val'])
-        print(f'val_loss:{self.val_loss}')
+        self.SEval_loss /= len(self.loader['val'])
+        print(f'val_loss:{self.val_loss}, SEval_loss:{self.SEval_loss}')
         
         if self.best_loss > self.val_loss:
             
@@ -166,7 +146,6 @@ class Trainer:
             f.write(f'{wave_name},{s_pesq},{s_stoi}\n')
 
         
-
     def train(self):
        
         while self.epoch < self.epochs:
@@ -185,12 +164,12 @@ class Trainer:
 #         self.score_path = './Result/Test_Noisy.csv'
         checkpoint = torch.load(self.model_path)
         self.model.load_state_dict(checkpoint['model'])
-        
         print(self.Test_path['noisy'])
-        exit()
+
         test_folders = get_filepaths(self.Test_path['noisy'])
         clean_path = self.Test_path['clean']
         check_folder(self.score_path)
+        
         if os.path.exists(self.score_path):
             os.remove(self.score_path)
         with open(self.score_path, 'a') as f:

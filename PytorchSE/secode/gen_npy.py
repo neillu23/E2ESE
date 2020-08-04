@@ -100,10 +100,6 @@ def make_spectrum(filename=None, y=None, is_slice=False, feature_type='logmag', 
     elif mode == 'minmax':
         Sxx = 2 * (Sxx - _min)/(_max - _min) - 1
 
-
-#     if is_slice:
-#         Sxx = slice_pad(Sxx, SHIFT, seg_size=FRAMELENGTH, pad_value=0)
-
     return Sxx, phase, len(y)
 
 
@@ -140,15 +136,10 @@ if __name__ == '__main__':
             
             check_folder(out_name_c)
             torch.save(torch.from_numpy(c_data.transpose()),out_name_c)
-        
-        
-        n_wav,sr = librosa.load(n_,sr=16000)
-        
 
-        
+        n_wav,sr = librosa.load(n_,sr=16000) 
         n_data,_,_ = make_spectrum(y= n_wav)
-        #print(n_,n_data.shape,c_,c_data.shape)
-        #assert(n_data.shape[1] == c_data.shape[1])
+
         check_folder(out_name_n)
         torch.save(torch.from_numpy(n_data.transpose()),out_name_n)
         n_ptfiles.append(out_name_n)
@@ -157,13 +148,3 @@ if __name__ == '__main__':
         for item in n_ptfiles:
             f.write('%s\n' % item)
     
-
-
-    # train_path = '../Noisy_adaptive/
-    # mkl.set_num_threads(1)
-    # wav_files = get_filepaths(train_path)
-    #         out_path = wav_file.replace('/TMHINT_v2/','/TMHINT_v2_log1p/').split('.w')[0]
-#         data,_,_ = wav_to_spec(wav,Norm=False,log=True)
-
-
-
