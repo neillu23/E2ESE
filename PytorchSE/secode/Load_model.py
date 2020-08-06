@@ -105,7 +105,7 @@ def Load_data(args, Train_path):
     #[Neil] Modify fea_path
     #[Yo] Modify n_files, test/train split(test_size set to  0.1)
     n_files = np.array([x[:-1] for x in open(Train_path).readlines() if str(x.split('/')[-3])[0]=='n'])
-    train_paths,val_paths = train_test_split(n_files[:500],test_size=0.1,random_state=999)
+    train_paths,val_paths = train_test_split(n_files[:4000],test_size=0.1,random_state=999)
     
     train_dataset, val_dataset = CustomDataset(train_paths, args.asr_y_path), CustomDataset(val_paths, args.asr_y_path)
     # [Yo] Add padding collate_fn

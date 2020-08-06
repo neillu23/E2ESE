@@ -3,23 +3,20 @@ import torch
 import numpy
 
 class CombinedModel(nn.Module):
-    def __init__(self, SEmodel, ASRmodel, SEcriterion, alpha,):
+    def __init__(self, SEmodel, ASRmodel, SEcriterion, alpha):
         super(CombinedModel, self).__init__()
         self.SEmodel = SEmodel
         self.ASRmodel = ASRmodel
         self.SEcriterion = SEcriterion
         self.alpha = alpha
         self.Fbank = Fbank
-        
-
-        
+             
     def forward(self, noisy, clean, ilen, y):
         enhanced = self.SEmodel(noisy)       
         SEloss = self.SEcriterion(enhanced, clean)
         Fbank=self.Fbank()
         enhanced_fbank = Fbank.forward(enhanced)
         ASRloss = self.ASRmodel(enhanced_fbank,ilen,y)
-      
         loss = SEloss + self.alpha * ASRloss
         return loss
 

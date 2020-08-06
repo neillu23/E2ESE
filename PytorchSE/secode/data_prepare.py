@@ -44,6 +44,6 @@ if __name__ == "__main__":
     dic=savetodic(jsonpath2,dic)
     dic=savetodic(jsonpath3,dic)
 
-    np.save('file_y.npy', dic) 
+    np.save('file_manner_y.npy', dic) 
    
 

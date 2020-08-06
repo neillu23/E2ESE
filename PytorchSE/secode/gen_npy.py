@@ -8,11 +8,11 @@ from tqdm import tqdm
 from util import check_folder
 
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "2"
+#os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
-clean_list="/home/neillu/Desktop/Workspace/yo/End2End/PytorchSE/secode/TIMIT_filelist.txt"
+clean_list="/home/neillu/Desktop/Workspace/yo/End2End/PytorchSE/secode/TIMIT_Manner_E2E_wav_filelist.txt"
 noisy_list="/home/neillu/Desktop/Workspace/yo/End2End/PytorchSE/secode/TIMIT_noisy_40hr_wav_filelist.txt"
-out_path="/home/neillu/Desktop/Workspace/TIMIT_spec/"
+out_path="/home/neillu/Desktop/Workspace/TIMIT_Manner_E2E_spec/"
 #dev_list = "/mnt/Data/user_vol_2/user_neillu/DNS_Challenge_timit/dv_timit"
 #test_list = "/mnt/Data/user_vol_2/user_neillu/DNS_Challenge_timit/ts_timit_new_all"
 
@@ -118,7 +118,8 @@ if __name__ == '__main__':
         c_dict[c_tmp[-2]+'_'+c_tmp[-1]]=c_.replace(c_tmp[-2]+'/'+c_tmp[-1]+'.WAV','')
         
     
-    
+    np.save('c_wavfolder_dic.npy', c_dict) 
+
     for i,n_ in enumerate(tqdm(n_files)):
         ### use noisy filename to find clean file
         name = n_.split('/')[-1].split('_')[0] + '_' + n_.split('/')[-1].split('_')[1]

@@ -27,13 +27,23 @@ def cal_score(clean,enhanced):
 
 def get_filepaths(directory,ftype='.wav'):
     file_paths = []
+
+    with open(directory, 'r') as f:
+        for line in f:
+            file_paths.append(line[:-1])
+
+    return file_paths
+
+
+
+    '''
     for root, directories, files in os.walk(directory):
         for filename in files:
             if filename.endswith(ftype):
                 filepath = os.path.join(root, filename)
                 file_paths.append(filepath)  # Add it to the list.
-
     return sorted(file_paths)
+    '''
 
 
 def make_spectrum(filename=None, y=None, is_slice=False, feature_type='logmag', mode=None, FRAMELENGTH=None,
@@ -87,7 +97,7 @@ def recons_spec_phase(Sxx_r, phase, length_wav, feature_type='logmag'):
     result = librosa.istft(R,
                      center=False,
                      hop_length=256,
-                     win_length=512,
+                     win_length=400,
                      window=scipy.signal.hamming,
                      length=length_wav)
     return result

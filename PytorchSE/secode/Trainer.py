@@ -7,8 +7,8 @@ import librosa, scipy
 import pdb
 import numpy as np
 from scipy.io.wavfile import write as audiowrite
-from util import get_filepaths, check_folder, make_spectrum, recons_spec_phase, cal_score
-
+from util import get_filepaths, check_folder, recons_spec_phase, cal_score
+from gen_npy import make_spectrum
 maxv = np.iinfo(np.int16).max
 
 class Trainer:
@@ -125,14 +125,23 @@ class Trainer:
             self.save_checkpoint()
             self.best_loss = self.val_loss
             
-    def write_score(self,test_file,clean_path):
+    def write_score(self,test_file,c_dict):
         
         self.model.eval()
         n_data,sr = librosa.load(test_file,sr=16000)
+        name = test_file.split('/')[-1].split('_')[0] + '_' + test_file.split('/')[-1].split('_')[1]
 #         noisy = n_data
-        c_data,sr = librosa.load(os.path.join(clean_path,'clean_'+'_'.join((test_file.split('/')[-1].split('_')[-2:])) ),sr=16000)
+        n_folder = '/'.join(test_file.split('/')[-4:-1])
+        name=name.replace('.wav','')
+        c_name = name.split('_')[0]+'/'+name.split('_')[1]+'.WAV'
+        c_folder=c_dict[name]
+        clean_file= os.path.join(c_folder, c_name)
+
+        #
+        c_data,sr = librosa.load(clean_file,sr=16000)
         n_data,n_phase,n_len = make_spectrum(y=n_data)
         n_data = torch.from_numpy(n_data.transpose()).to(self.device).unsqueeze(0)
+        
         #[Yo] Change prediction
         pred = self.model.SEmodel(n_data).cpu().detach().numpy()
         enhanced = recons_spec_phase(pred.squeeze().transpose(),n_phase,n_len)
@@ -142,12 +151,13 @@ class Trainer:
 
 #         s_pesq, s_stoi = cal_score(c_data,noisy)
         s_pesq, s_stoi = cal_score(c_data,enhanced)
-        wave_name = test_file.split('/')[-1].split('.')[0]
+        
         with open(self.score_path, 'a') as f:
-            f.write(f'{wave_name},{s_pesq},{s_stoi}\n')
+            f.write(f'{test_file},{s_pesq},{s_stoi}\n')
 
         
     def train(self):
+        print('Training...')
        
         while self.epoch < self.epochs:
             self._train_epoch()
@@ -165,20 +175,24 @@ class Trainer:
 #         self.score_path = './Result/Test_Noisy.csv'
         checkpoint = torch.load(self.model_path)
         self.model.load_state_dict(checkpoint['model'])
-        print(self.Test_path['noisy'])
-
-        test_folders = get_filepaths(self.Test_path['noisy'])
-        clean_path = self.Test_path['clean']
+        
+        test_files = get_filepaths(self.Test_path['noisy'])[:50]
+        
+        c_dict = np.load(self.args.c_dic,allow_pickle='TRUE').item()
+        
+        #clean_path = self.Test_path['clean']
         check_folder(self.score_path)
         
         if os.path.exists(self.score_path):
             os.remove(self.score_path)
         with open(self.score_path, 'a') as f:
             f.write('Filename,PESQ,STOI\n')
-        for test_file in tqdm(test_folders):
-            self.write_score(test_file,clean_path)
+        print('Testing...')
+        for test_file in tqdm(test_files):
+            self.write_score(test_file,c_dict)
         
         data = pd.read_csv(self.score_path)
+
         pesq_mean = data['PESQ'].to_numpy().astype('float').mean()
         stoi_mean = data['STOI'].to_numpy().astype('float').mean()
 
