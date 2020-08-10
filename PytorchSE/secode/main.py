@@ -27,7 +27,7 @@ Test_path = {'noisy':'./TIMIT_noisy_40hr_wav_filelist.txt','clean':'./TIMIT_Mann
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--mode', type=str, default='train')
-    parser.add_argument('--epochs', type=int, default=400)
+    parser.add_argument('--epochs', type=int, default=200)
     parser.add_argument('--batch_size', type=int, default=4)  
     parser.add_argument('--lr', type=float, default=0.00005)
     parser.add_argument('--loss_fn', type=str, default='l1')
@@ -37,7 +37,7 @@ def get_args():
     parser.add_argument('--ASRmodel_path', type=str, default='./newfbank.model.acc.best.entire.pth')
     parser.add_argument('--alpha', type=float, default=0.0002) 
     #loss = SEloss + self.alpha * ASRloss
-    parser.add_argument('--asr_y_path', type=str, default='./file_manner_y.npy') 
+    parser.add_argument('--asr_y_path', type=str, default='./data_test.json,./data_train_dev.json,./data_train_nodev.json') 
     parser.add_argument('--c_dic', type=str, default='./c_wavfolder_dic.npy') 
     #####
     parser.add_argument('--gpu', type=str, default='0')

@@ -14,7 +14,6 @@ maxv = np.iinfo(np.int16).max
 class Trainer:
     def __init__(self, model, epochs, epoch, best_loss, optimizer, 
                       criterion, device, loader,Test_path, writer, model_path, score_path, args):
-#         self.step = 0
         self.epoch = epoch
         self.epochs = epochs
         self.best_loss = best_loss
@@ -53,8 +52,8 @@ class Trainer:
         #[Neil] Modify for CustomDataset
         data = torch.cat(torch.split(data,slice_size,dim=1),dim=0)
         # data = torch.cat(torch.split(data,slice_size,dim=1)[:-1],dim=0)
-#         index = torch.randperm(data.shape[0])
-#         return data[index]
+        # index = torch.randperm(data.shape[0])
+        # return data[index]
         return data
 
     def _train_step(self, noisy, clean, ilen, asr_y):
@@ -64,6 +63,15 @@ class Trainer:
         #[Yo] Change loss
         loss = self.model(noisy, clean, ilen, asr_y)
         pred = self.model.SEmodel(noisy)
+        '''
+        for name, param in self.model.SEmodel.named_parameters():
+            if param.requires_grad:
+                print(name, param.data)
+        print('tr_noisy',noisy)
+        print('tr_pred',pred)
+        print(noisy.size(),pred.size())
+        exit()
+        '''
         SEloss = self.criterion(pred, clean)
 
         self.train_loss += loss.item()
@@ -78,7 +86,6 @@ class Trainer:
         progress = tqdm(total=len(self.loader['train']), desc=f'Epoch {self.epoch} / Epoch {self.epochs} | train', unit='step')
         self.model.train()
         
-        #[Yo]
         for noisy, clean, ilen, asr_y in self.loader['train']:
             
             self._train_step(noisy, clean, ilen, asr_y)
@@ -96,7 +103,20 @@ class Trainer:
         noisy, clean, ilen, asr_y = noisy.to(device), clean.to(device), ilen.to(device), asr_y.to(device)
         # [Yo] Delete data slicing, change pred
         #noisy, clean = self.slice_data(noisy), self.slice_data(clean)
+        
         pred = self.model.SEmodel(noisy)
+
+        '''
+        for name, param in self.model.SEmodel.named_parameters():
+            if param.requires_grad:
+                print(name, param.data)
+        print('val_noisy',noisy)
+        print('val_pred',pred)
+        print(noisy.size(),pred.size())
+        
+        exit()
+        '''
+
         SEloss = self.criterion(pred, clean)
         E2Eloss = self.model(noisy, clean, ilen, asr_y)
         self.SEval_loss += SEloss.item()
@@ -143,7 +163,9 @@ class Trainer:
         n_data = torch.from_numpy(n_data.transpose()).to(self.device).unsqueeze(0)
         
         #[Yo] Change prediction
+        print('n_data',n_data)
         pred = self.model.SEmodel(n_data).cpu().detach().numpy()
+        print('pred',pred)
         enhanced = recons_spec_phase(pred.squeeze().transpose(),n_phase,n_len)
         out_path = f"./Enhanced/{self.model.SEmodel.__class__.__name__}/{test_file.split('/')[-1]}"
         check_folder(out_path)
@@ -175,6 +197,7 @@ class Trainer:
 #         self.score_path = './Result/Test_Noisy.csv'
         checkpoint = torch.load(self.model_path)
         self.model.load_state_dict(checkpoint['model'])
+        #checkpoint_key ['epoch', 'model', 'optimizer', 'best_loss']
         
         test_files = get_filepaths(self.Test_path['noisy'])[:50]
         

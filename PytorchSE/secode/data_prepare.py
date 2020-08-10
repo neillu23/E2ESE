@@ -7,7 +7,9 @@ import numpy as np
 import itertools 
 from tqdm import tqdm
 
-def data_prepare(train_feature):
+def data_prepare(json_path,dic):
+    with open(json_path, "rb") as f:
+        train_feature = json.load(f)["utts"]
 
     converter = CustomConverter(subsampling_factor=1)
     train = make_batchset(train_feature,batch_size=len(train_feature))
@@ -19,12 +21,18 @@ def data_prepare(train_feature):
         preprocess_args={"train": True},  # Switch the mode of preprocessing
         )
     dataset = TransformDataset(train, lambda data: converter([load_tr(data)]))
-    return dataset, name
+    data1 = dataset[0][1]
+    data2 = dataset[0][2]
+    for i in tqdm(range(len(name))):
+        ilen = data1[i]
+        y = data2[i]
+        dic[name[i]]=[ilen,y]
 
+    return dic
 
+'''
 def savetodic(jsonpath,dic):
-    with open(jsonpath, "rb") as f:
-        train_feature = json.load(f)["utts"]
+    
     dataset, name=data_prepare(train_feature)
 
     for i in tqdm(range(len(name))):
@@ -44,6 +52,6 @@ if __name__ == "__main__":
     dic=savetodic(jsonpath2,dic)
     dic=savetodic(jsonpath3,dic)
 
-    np.save('file_manner_y.npy', dic) 
+    #np.save('file_manner_y.npy', dic) 
    
-
+'''

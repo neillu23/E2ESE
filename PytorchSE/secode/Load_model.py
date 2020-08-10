@@ -10,6 +10,7 @@ from torch.utils.data.dataset import Dataset
 import pdb
 from tqdm import tqdm 
 from joblib  import parallel_backend, Parallel, delayed
+from data_prepare import data_prepare
 
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -107,7 +108,13 @@ def Load_data(args, Train_path):
     n_files = np.array([x[:-1] for x in open(Train_path).readlines() if str(x.split('/')[-3])[0]=='n'])
     train_paths,val_paths = train_test_split(n_files[:4000],test_size=0.1,random_state=999)
     
-    train_dataset, val_dataset = CustomDataset(train_paths, args.asr_y_path), CustomDataset(val_paths, args.asr_y_path)
+    print('Reading json files...')
+    asr_y_path = [item for item in args.asr_y_path.split(',')]
+    asr_dict = {}
+    for json_path in asr_y_path:
+        asr_dict = data_prepare(json_path,asr_dict)
+
+    train_dataset, val_dataset = CustomDataset(train_paths, asr_dict), CustomDataset(val_paths, asr_dict)
     # [Yo] Add padding collate_fn
     loader = { 
         'train':DataLoader(train_dataset, batch_size=args.batch_size,
@@ -120,26 +127,25 @@ def Load_data(args, Train_path):
 
 class CustomDataset(Dataset):
 
-    def __init__(self, paths, asr_y_path):   # initial logic happens like transform
+    def __init__(self, paths, asr_dict):   # initial logic happens like transform
         #[Neil] Modify CustomDataset
         #[Yo] Modify CustomDataset
         self.n_paths = paths
-        self.asr_y_path = asr_y_path
+        self.asr_dict = asr_dict
         self.noisy = []
         self.clean = []
         self.asr_ilen = []
         self.ars_y = []
         print('Reading data...')
-        asr_dict = np.load(asr_y_path,allow_pickle='TRUE').item()
-        
+ 
         for _,p in enumerate(tqdm(self.n_paths)):
             self.noisy += [torch.load(p)]
             n_folder = '/'.join(p.split('/')[-4:-1])
             self.clean += [torch.load(p.replace(n_folder,"clean"))]
 
             name = p.split('/')[-1].replace('.pt','')
-            self.asr_ilen += [asr_dict[name][0]]
-            self.ars_y += [asr_dict[name][1]]
+            self.asr_ilen += [self.asr_dict[name][0]]
+            self.ars_y += [self.asr_dict[name][1]]
 
     def __getitem__(self, index):
         return self.noisy[index], self.clean[index], self.asr_ilen[index], self.ars_y[index]
