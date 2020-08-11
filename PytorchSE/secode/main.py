@@ -27,9 +27,9 @@ Test_path = {'noisy':'./TIMIT_noisy_40hr_wav_filelist.txt','clean':'./TIMIT_Mann
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--mode', type=str, default='train')
-    parser.add_argument('--epochs', type=int, default=200)
+    parser.add_argument('--epochs', type=int, default=100)
     parser.add_argument('--batch_size', type=int, default=4)  
-    parser.add_argument('--lr', type=float, default=0.00005)
+    parser.add_argument('--lr', type=float, default=0.000005)
     parser.add_argument('--loss_fn', type=str, default='l1')
     parser.add_argument('--optim', type=str, default='adam')
     parser.add_argument('--SEmodel', type=str, default='transformerencoder_03') 

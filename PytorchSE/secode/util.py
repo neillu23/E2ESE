@@ -19,19 +19,20 @@ def check_folder(path):
 def cal_score(clean,enhanced):
     clean = clean/abs(clean).max()
     enhanced = enhanced/abs(enhanced).max()
+
     s_stoi = stoi(clean, enhanced, 16000)
     s_pesq = pesq(clean, enhanced, 16000)
     
     return round(s_pesq,5), round(s_stoi,5)
 
 
-def get_filepaths(directory,ftype='.wav'):
+def get_filepaths(directory,folders='BabyCry.wav,cafeteria_babble.wav',ftype='.wav'):
     file_paths = []
-
+    folders = folders.split(',')
     with open(directory, 'r') as f:
         for line in f:
-            file_paths.append(line[:-1])
-
+            if str(line.split('/')[-3]) in folders:
+                file_paths.append(line[:-1])
     return file_paths
 
 

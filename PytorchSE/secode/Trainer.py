@@ -115,8 +115,8 @@ class Trainer:
         print(noisy.size(),pred.size())
         
         exit()
+        
         '''
-
         SEloss = self.criterion(pred, clean)
         E2Eloss = self.model(noisy, clean, ilen, asr_y)
         self.SEval_loss += SEloss.item()
@@ -163,11 +163,9 @@ class Trainer:
         n_data = torch.from_numpy(n_data.transpose()).to(self.device).unsqueeze(0)
         
         #[Yo] Change prediction
-        print('n_data',n_data)
         pred = self.model.SEmodel(n_data).cpu().detach().numpy()
-        print('pred',pred)
         enhanced = recons_spec_phase(pred.squeeze().transpose(),n_phase,n_len)
-        out_path = f"./Enhanced/{self.model.SEmodel.__class__.__name__}/{test_file.split('/')[-1]}"
+        out_path = f"./Enhanced/{self.model.SEmodel.__class__.__name__}/{n_folder+'/'+test_file.split('/')[-1]}"
         check_folder(out_path)
         audiowrite(out_path,16000,(enhanced* maxv).astype(np.int16))
 
@@ -199,7 +197,7 @@ class Trainer:
         self.model.load_state_dict(checkpoint['model'])
         #checkpoint_key ['epoch', 'model', 'optimizer', 'best_loss']
         
-        test_files = get_filepaths(self.Test_path['noisy'])[:50]
+        test_files = get_filepaths(self.Test_path['noisy'],folders='BabyCry.wav,cafeteria_babble.wav')
         
         c_dict = np.load(self.args.c_dic,allow_pickle='TRUE').item()
         
