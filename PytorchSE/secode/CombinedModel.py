@@ -1,6 +1,7 @@
 import torch.nn as nn
 import torch
 import numpy
+import math
 
 class CombinedModel(nn.Module):
     def __init__(self, SEmodel, ASRmodel, SEcriterion, alpha):
@@ -12,11 +13,25 @@ class CombinedModel(nn.Module):
         self.Fbank = Fbank
              
     def forward(self, noisy, clean, ilen, y):
-        enhanced = self.SEmodel(noisy)       
+        enhanced = self.SEmodel(noisy)
         SEloss = self.SEcriterion(enhanced, clean)
+        if math.isinf(SEloss):
+            print('SEloss is infinity:',SEloss)
+            print('Enhanced:',enhanced)
+            print('Clean:',clean)
+
         Fbank=self.Fbank()
         enhanced_fbank = Fbank.forward(enhanced)
         ASRloss = self.ASRmodel(enhanced_fbank,ilen,y)
+        
+        
+        if math.isinf(ASRloss):
+            print('enhanced:',enhanced)
+            print('enhanced_fbank:',enhanced_fbank)
+            print('ASRloss is infinity:',ASRloss)
+            
+        
+
         loss = SEloss + self.alpha * ASRloss
         return loss
 

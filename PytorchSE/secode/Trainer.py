@@ -112,11 +112,10 @@ class Trainer:
                 print(name, param.data)
         print('val_noisy',noisy)
         print('val_pred',pred)
-        print(noisy.size(),pred.size())
-        
-        exit()
-        
         '''
+        
+        
+        
         SEloss = self.criterion(pred, clean)
         E2Eloss = self.model(noisy, clean, ilen, asr_y)
         self.SEval_loss += SEloss.item()
