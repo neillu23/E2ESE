@@ -29,7 +29,7 @@ def get_args():
     parser.add_argument('--mode', type=str, default='train')
     parser.add_argument('--epochs', type=int, default=100)
     parser.add_argument('--batch_size', type=int, default=4)  
-    parser.add_argument('--lr', type=float, default=0.0000001)
+    parser.add_argument('--lr', type=float, default=10**(-10))
     parser.add_argument('--loss_fn', type=str, default='l1')
     parser.add_argument('--optim', type=str, default='adam')
     parser.add_argument('--SEmodel', type=str, default='transformerencoder_03') 
@@ -38,7 +38,7 @@ def get_args():
     parser.add_argument('--train_num', type=int, default=4000)
     #####
     parser.add_argument('--ASRmodel_path', type=str, default='./newfbank.model.acc.best.entire.pth')
-    parser.add_argument('--alpha', type=float, default=0.0002) #loss = SEloss + self.alpha * ASRloss
+    parser.add_argument('--alpha', type=float, default=1) #loss = SEloss + self.alpha * ASRloss
     parser.add_argument('--asr_y_path', type=str, default='./data_test.json,./data_train_dev.json,./data_train_nodev.json') 
     parser.add_argument('--c_dic', type=str, default='./c_wavfolder_dic.npy') 
     #####

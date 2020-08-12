@@ -2,6 +2,7 @@ import torch.nn as nn
 import torch
 import numpy
 import math
+from espnet.nets.pytorch_backend.nets_utils import to_torch_tensor
 
 class CombinedModel(nn.Module):
     def __init__(self, SEmodel, ASRmodel, SEcriterion, alpha):
@@ -15,22 +16,33 @@ class CombinedModel(nn.Module):
     def forward(self, noisy, clean, ilen, y):
         enhanced = self.SEmodel(noisy)
         SEloss = self.SEcriterion(enhanced, clean)
-        if math.isinf(SEloss):
-            print('SEloss is infinity:',SEloss)
-            print('Enhanced:',enhanced)
-            print('Clean:',clean)
-
+        
         Fbank=self.Fbank()
         enhanced_fbank = Fbank.forward(enhanced)
+        
+        hs_pad, hlens = to_torch_tensor(enhanced_fbank), ilen
+        hs_pad, hlens, _ = self.ASRmodel.enc(hs_pad, hlens)
+        #print(hs_pad.size(), enhanced_fbank.size(), y.size())
+        loss_ctc = self.ASRmodel.ctc(hs_pad, hlens, y)
+        
+        
         ASRloss = self.ASRmodel(enhanced_fbank,ilen,y)
-        
-        
+
+        if math.isinf(loss_ctc):
+            print('loss_ctc',loss_ctc)
+            print('ASRloss',ASRloss)
+            print('hs_pad',hs_pad)
+
+
+        '''
         if math.isinf(ASRloss):
-            print('enhanced:',enhanced)
-            print('enhanced_fbank:',enhanced_fbank)
-            print('ASRloss is infinity:',ASRloss)
-            
-        
+            for i in range(4):
+                print(i)
+                print('noisy:',noisy[i])
+                print('enhanced:',enhanced[i])
+                print('enhanced_fbank:',enhanced_fbank[i])
+                print('ASRloss is infinity:',ASRloss)
+        '''
 
         loss = SEloss + self.alpha * ASRloss
         return loss
