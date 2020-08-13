@@ -29,8 +29,8 @@ def spec2fbank(pow_frames):
     fbank = torch.tensor(fbank, dtype=torch.float)
     filter_banks = torch.matmul(pow_frames, torch.transpose(fbank, 0, 1))
     #torch.nn.LayerNorm
-    #m = torch.nn.LayerNorm(filter_banks.size()[0])
-    #filter_banks = torch.transpose(m(torch.transpose(filter_banks,0,1)),0,1)
+    m = torch.nn.LayerNorm(filter_banks.size()[0])
+    filter_banks = torch.transpose(m(torch.transpose(filter_banks,0,1)),0,1)
     return filter_banks
 # filter_banks = numpy.where(filter_banks == 0, numpy.finfo(float).eps, filter_banks)  # Numerical Stability
 # filter_banks = 20 * torch.log(filter_banks)  # dB
