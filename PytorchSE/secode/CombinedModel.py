@@ -77,7 +77,7 @@ class Fbank(nn.Module):
 
         # m = torch.nn.LayerNorm(filter_banks.size()[1:]).to(self.device)
         # filter_banks = m(filter_banks)
-        m = torch.nn.LayerNorm(filter_banks.size()[0]).to(self.device)
-        filter_banks = torch.transpose(m(torch.transpose(filter_banks,0,1)),0,1)
+        m = torch.nn.LayerNorm([filter_banks.size()[1],filter_banks.size()[0]]).to(self.device)
+        filter_banks = torch.transpose(m(torch.transpose(filter_banks,0,2)),0,2)
         return filter_banks
 
