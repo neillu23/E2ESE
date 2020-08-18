@@ -63,28 +63,32 @@ class Trainer:
         #[Yo] Change loss
         loss = self.model(noisy, clean, ilen, asr_y)
         pred = self.model.SEmodel(noisy)
+        
         '''
         for name, param in self.model.SEmodel.named_parameters():
             if param.requires_grad:
-                print(name, param.data)
-        print('tr_noisy',noisy)
+                print('train',name, param.data)
+        
         print('tr_pred',pred)
-        print(noisy.size(),pred.size())
-        exit()
         '''
+
         SEloss = self.criterion(pred, clean)
 
         self.train_loss += loss.item()
         self.SEtrain_loss += SEloss.item()
         self.optimizer.zero_grad()
+
         loss.backward()
         self.optimizer.step()
 
 
     def _train_epoch(self):
         self.train_loss = 0
+        self.SEtrain_loss = 0
+
         progress = tqdm(total=len(self.loader['train']), desc=f'Epoch {self.epoch} / Epoch {self.epochs} | train', unit='step')
         self.model.train()
+        self.model.SEmodel.train()
         
         for noisy, clean, ilen, asr_y in self.loader['train']:
             
@@ -109,13 +113,13 @@ class Trainer:
         '''
         for name, param in self.model.SEmodel.named_parameters():
             if param.requires_grad:
-                print(name, param.data)
-        print('val_noisy',noisy)
+                print('val',name, param.data)
+        
         print('val_pred',pred)
+        exit()
         '''
         
-        
-        
+
         SEloss = self.criterion(pred, clean)
         E2Eloss = self.model(noisy, clean, ilen, asr_y)
         self.SEval_loss += SEloss.item()
@@ -124,8 +128,10 @@ class Trainer:
 
     def _val_epoch(self):
         self.val_loss = 0
+        self.SEval_loss = 0
         progress = tqdm(total=len(self.loader['val']), desc=f'Epoch {self.epoch} / Epoch {self.epochs} | valid', unit='step')
         self.model.eval()
+        self.model.SEmodel.eval()
 
         for noisy, clean, ilen, asr_y in self.loader['val']:
             self._val_step(noisy, clean, ilen, asr_y)
@@ -196,7 +202,8 @@ class Trainer:
         self.model.load_state_dict(checkpoint['model'])
         #checkpoint_key ['epoch', 'model', 'optimizer', 'best_loss']
         
-        test_files = get_filepaths(self.Test_path['noisy'],folders='BabyCry.wav,cafeteria_babble.wav')
+        #test_files = get_filepaths(self.Test_path['noisy'],folders='BabyCry.wav,cafeteria_babble.wav')
+        test_files = get_filepaths(self.Test_path['noisy'],folders='pinknoise.wav,n98.wav')
         
         c_dict = np.load(self.args.c_dic,allow_pickle='TRUE').item()
         
