@@ -33,10 +33,10 @@ def get_args():
     parser.add_argument('--val_ratio', type=float, default=0.1)
     parser.add_argument('--train_num', type=int, default=4000)
     #####
-    parser.add_argument('--ASRmodel_path', type=str, default='datas/newctcloss.model.acc.best.entire.pth')
+    parser.add_argument('--ASRmodel_path', type=str, default='data/newctcloss.model.acc.best.entire.pth')
     parser.add_argument('--alpha', type=float, default=0) #loss = (1 - self.alpha) * SEloss + self.alpha * ASRloss
-    parser.add_argument('--asr_y_path', type=str, default='datas/data_test.json,datas/data_train_dev.json,datas/data_train_nodev.json') 
-    parser.add_argument('--c_dic', type=str, default='datas/c_wavfolder_dic.npy') 
+    parser.add_argument('--asr_y_path', type=str, default='data/data_test.json,data/data_train_dev.json,data/data_train_nodev.json') 
+    parser.add_argument('--c_dic', type=str, default='data/c_wavfolder_dic.npy') 
     #####
     parser.add_argument('--gpu', type=str, default='0')
     parser.add_argument('--target', type=str, default='MAP') #'MAP' or 'IRM'
