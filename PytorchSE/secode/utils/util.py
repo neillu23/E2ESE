@@ -47,8 +47,7 @@ def get_filepaths(directory,folders='BabyCry.wav,cafeteria_babble.wav',ftype='.w
     '''
 
 
-def make_spectrum(filename=None, y=None, is_slice=False, feature_type='logmag', mode=None, FRAMELENGTH=None,
-                 SHIFT=None, _max=None, _min=None):
+def make_spectrum(filename=None, y=None, is_slice=False, feature_type='logmag', mode=None, FRAMELENGTH=400, SHIFT=160, _max=None, _min=None):
     if y is not None:
         y = y
     else:
@@ -62,8 +61,8 @@ def make_spectrum(filename=None, y=None, is_slice=False, feature_type='logmag', 
 
     ### Normalize waveform
     # y = y / np.max(abs(y)) / 2.
-
-    D = librosa.stft(y,center=False, n_fft=512, hop_length=256,win_length=512,window=scipy.signal.hamming)
+    
+    D = librosa.stft(y,center=False, n_fft=FRAMELENGTH, hop_length=SHIFT,win_length=FRAMELENGTH,window=scipy.signal.hamming)
     utt_len = D.shape[-1]
     phase = np.exp(1j * np.angle(D))
     D = np.abs(D)

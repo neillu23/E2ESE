@@ -7,8 +7,7 @@ import librosa, scipy
 import pdb
 import numpy as np
 from scipy.io.wavfile import write as audiowrite
-from util import get_filepaths, check_folder, recons_spec_phase, cal_score
-from gen_npy import make_spectrum
+from utils.util import get_filepaths, check_folder, recons_spec_phase, cal_score, make_spectrum
 maxv = np.iinfo(np.int16).max
 
 class Trainer:

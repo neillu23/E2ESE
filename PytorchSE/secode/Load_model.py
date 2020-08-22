@@ -3,14 +3,14 @@ import torch.nn as nn
 import numpy as np
 from torch.optim import Adam
 from torch.nn.utils.rnn import pad_sequence
-from util import get_filepaths
 from torch.utils.data import DataLoader
 from sklearn.model_selection import train_test_split
 from torch.utils.data.dataset import Dataset
 import pdb
 from tqdm import tqdm 
 from joblib  import parallel_backend, Parallel, delayed
-from data_prepare import data_prepare
+from utils.load_asr import load_asr
+from utils.util import get_filepaths
 
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -112,7 +112,7 @@ def Load_data(args, Train_path):
     asr_y_path = [item for item in args.asr_y_path.split(',')]
     asr_dict = {}
     for json_path in asr_y_path:
-        asr_dict = data_prepare(json_path,asr_dict)
+        asr_dict = load_asr(json_path,asr_dict)
 
     train_dataset, val_dataset = CustomDataset(train_paths, asr_dict), CustomDataset(val_paths, asr_dict)
     # [Yo] Add padding collate_fn

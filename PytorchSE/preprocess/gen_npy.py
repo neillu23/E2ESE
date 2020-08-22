@@ -5,8 +5,11 @@ import scipy
 import torch
 from tqdm import tqdm
 # import pdb, mkl
-from util import check_folder
+import sys
+sys.path.insert(1, '..')
 
+from secode.utils.util import check_folder
+from secode.utils.util import make_spectrum
 
 #os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
@@ -62,45 +65,6 @@ def wav_to_spec(x,Norm=False,log=False, padding=False):
         Lp_spec = Lp_pad
         
     return Lp_spec, phase_spec, length_wav
-
-def make_spectrum(filename=None, y=None, is_slice=False, feature_type='logmag', mode=None, FRAMELENGTH=None, SHIFT=None, _max=None, _min=None):
-    if y is not None:
-        y = y
-    else:
-        y, sr = librosa.load(filename, sr=16000)
-        if sr != 16000:
-            raise ValueError('Sampling rate is expected to be 16kHz!')
-        if y.dtype == 'int16':
-            y = np.float32(y/32767.)
-        elif y.dtype !='float32':
-            y = np.float32(y)
-
-    ### Normalize waveform
-    # y = y / np.max(abs(y)) / 2.
-    
-    #[Neil] modify the frame size
-    #D = librosa.stft(y,center=False, n_fft=512, hop_length=160,win_length=512,window=scipy.signal.hamming)
-    D = librosa.stft(y,center=False, n_fft=400, hop_length=160,win_length=400,window=scipy.signal.hamming)
-    utt_len = D.shape[-1]
-    phase = np.exp(1j * np.angle(D))
-    D = np.abs(D)
-
-    ### Feature type
-    if feature_type == 'logmag':
-        Sxx = np.log1p(D)
-    elif feature_type == 'lps':
-        Sxx = np.log10(D**2)
-    else:
-        Sxx = D
-
-    if mode == 'mean_std':
-        mean = np.mean(Sxx, axis=1).reshape(((hp.n_fft//2)+1, 1))
-        std = np.std(Sxx, axis=1).reshape(((hp.n_fft//2)+1, 1))+1e-12
-        Sxx = (Sxx-mean)/std  
-    elif mode == 'minmax':
-        Sxx = 2 * (Sxx - _min)/(_max - _min) - 1
-
-    return Sxx, phase, len(y)
 
 
 def check_dir(path):

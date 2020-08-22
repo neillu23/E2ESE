@@ -1,7 +1,7 @@
 import os, argparse, torch, random, sys
 from Trainer import Trainer
 from Load_model import Load_model, Load_data
-from util import check_folder
+from utils.util import check_folder
 from tensorboardX import SummaryWriter
 from CombinedModel import CombinedModel
 import torch.backends.cudnn as cudnn
@@ -21,8 +21,8 @@ cudnn.deterministic = True
 #[Neil] Modify Train_path but not used?
 #[Yo] Modify Train_path, Test_path: 
 
-Train_path = './TIMIT_noisy_40hr_spec_filelist.txt'
-Test_path = {'noisy':'./TIMIT_noisy_40hr_wav_filelist.txt','clean':'./TIMIT_Manner_E2E_wav_filelist.txt'}
+Train_path = '../datas/TIMIT_noisy_40hr_spec_filelist.txt'
+Test_path = {'noisy':'../datas/TIMIT_noisy_40hr_wav_filelist.txt','clean':'../datas/TIMIT_Manner_E2E_wav_filelist.txt'}
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -54,13 +54,13 @@ def get_args():
 
 def get_path(args):
     
-    checkpoint_path = f'./checkpoint/{args.SEmodel}_{args.target}_epochs{args.epochs}' \
+    checkpoint_path = f'../out/checkpoint/{args.SEmodel}_{args.target}_epochs{args.epochs}' \
                     f'_{args.optim}_{args.loss_fn}_batch{args.batch_size}_'\
                     f'lr{args.lr}.pth.tar'
-    model_path = f'./save_model/{args.SEmodel}_{args.target}_epochs{args.epochs}' \
+    model_path = f'../out/save_model/{args.SEmodel}_{args.target}_epochs{args.epochs}' \
                     f'_{args.optim}_{args.loss_fn}_batch{args.batch_size}_'\
                     f'lr{args.lr}.pth.tar'
-    score_path = f'./Result/{args.SEmodel}_{args.target}_epochs{args.epochs}' \
+    score_path = f'../out/Result/{args.SEmodel}_{args.target}_epochs{args.epochs}' \
                     f'_{args.optim}_{args.loss_fn}_batch{args.batch_size}_'\
                     f'lr{args.lr}.csv'
     
@@ -80,7 +80,7 @@ if __name__ == '__main__':
     checkpoint_path,model_path,score_path = get_path(args)
     
     # tensorboard
-    writer = SummaryWriter('./logs')
+    writer = SummaryWriter('../out/logs')
 #     writer = SummaryWriter(f'{args.logs}/{args.SEmodel}/{args.optim}/{args.optim}/{args.loss_fn}')
 #     exec ("from models.{} import {} as model".format(args.SEmodel.split('_')[0], args.SEmodel))
 #     pdb.set_trace()
