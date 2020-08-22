@@ -16,16 +16,12 @@ torch.manual_seed(SEED)
 cudnn.deterministic = True
 
 
-# data path
-
-#[Neil] Modify Train_path but not used?
-#[Yo] Modify Train_path, Test_path: 
-
-Train_path = '../datas/TIMIT_noisy_40hr_spec_filelist.txt'
-Test_path = {'noisy':'../datas/TIMIT_noisy_40hr_wav_filelist.txt','clean':'../datas/TIMIT_Manner_E2E_wav_filelist.txt'}
 
 def get_args():
     parser = argparse.ArgumentParser()
+    parser.add_argument('--train_path', type=str, default="")
+    parser.add_argument('--test_noisy', type=str, default="")
+    parser.add_argument('--test_clean', type=str, default="")
     parser.add_argument('--mode', type=str, default='train')
     parser.add_argument('--epochs', type=int, default=100)
     parser.add_argument('--batch_size', type=int, default=4)  
@@ -37,10 +33,10 @@ def get_args():
     parser.add_argument('--val_ratio', type=float, default=0.1)
     parser.add_argument('--train_num', type=int, default=4000)
     #####
-    parser.add_argument('--ASRmodel_path', type=str, default='./newctcloss.model.acc.best.entire.pth')
+    parser.add_argument('--ASRmodel_path', type=str, default='datas/newctcloss.model.acc.best.entire.pth')
     parser.add_argument('--alpha', type=float, default=0) #loss = (1 - self.alpha) * SEloss + self.alpha * ASRloss
-    parser.add_argument('--asr_y_path', type=str, default='./data_test.json,./data_train_dev.json,./data_train_nodev.json') 
-    parser.add_argument('--c_dic', type=str, default='./c_wavfolder_dic.npy') 
+    parser.add_argument('--asr_y_path', type=str, default='datas/data_test.json,datas/data_train_dev.json,datas/data_train_nodev.json') 
+    parser.add_argument('--c_dic', type=str, default='datas/c_wavfolder_dic.npy') 
     #####
     parser.add_argument('--gpu', type=str, default='0')
     parser.add_argument('--target', type=str, default='MAP') #'MAP' or 'IRM'
@@ -54,13 +50,13 @@ def get_args():
 
 def get_path(args):
     
-    checkpoint_path = f'../out/checkpoint/{args.SEmodel}_{args.target}_epochs{args.epochs}' \
+    checkpoint_path = f'out/checkpoint/{args.SEmodel}_{args.target}_epochs{args.epochs}' \
                     f'_{args.optim}_{args.loss_fn}_batch{args.batch_size}_'\
                     f'lr{args.lr}.pth.tar'
-    model_path = f'../out/save_model/{args.SEmodel}_{args.target}_epochs{args.epochs}' \
+    model_path = f'out/save_model/{args.SEmodel}_{args.target}_epochs{args.epochs}' \
                     f'_{args.optim}_{args.loss_fn}_batch{args.batch_size}_'\
                     f'lr{args.lr}.pth.tar'
-    score_path = f'../out/Result/{args.SEmodel}_{args.target}_epochs{args.epochs}' \
+    score_path = f'out/Result/{args.SEmodel}_{args.target}_epochs{args.epochs}' \
                     f'_{args.optim}_{args.loss_fn}_batch{args.batch_size}_'\
                     f'lr{args.lr}.csv'
     
@@ -78,9 +74,10 @@ if __name__ == '__main__':
     
     # declair path
     checkpoint_path,model_path,score_path = get_path(args)
+    Test_path = {'noisy':args.test_noisy,'clean':args.test_clean}
     
     # tensorboard
-    writer = SummaryWriter('../out/logs')
+    writer = SummaryWriter('out/logs')
 #     writer = SummaryWriter(f'{args.logs}/{args.SEmodel}/{args.optim}/{args.optim}/{args.loss_fn}')
 #     exec ("from models.{} import {} as model".format(args.SEmodel.split('_')[0], args.SEmodel))
 #     pdb.set_trace()
@@ -90,7 +87,7 @@ if __name__ == '__main__':
     exec (f"from models.{args.SEmodel.split('_')[0]} import {args.SEmodel} as SEmodel")
     SEmodel     = SEmodel()
     SEmodel, epoch, best_loss, optimizer, criterion, device = Load_model(args,SEmodel,checkpoint_path, model_path)
-    loader = Load_data(args, Train_path)
+    loader = Load_data(args)
 
     model = CombinedModel(SEmodel, ASRmodel, criterion, args.alpha)
 
@@ -103,7 +100,7 @@ if __name__ == '__main__':
     if args.retrain:
         args.epochs = args.re_epochs 
         checkpoint_path,model_path,score_path = get_path(args)
-        
+    
     Trainer = Trainer(model, args.epochs, epoch, best_loss, optimizer, 
                       criterion, device, loader, Test_path, writer, model_path, score_path, args)
     try:

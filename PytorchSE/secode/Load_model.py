@@ -99,13 +99,13 @@ def pad_collate(batch):
     return xx_pad, yy_pad, torch.tensor(asr_l), asr_y_pad
 
 
-def Load_data(args, Train_path):
+def Load_data(args):
 
     train_paths = []
     val_paths = []
     #[Neil] Modify fea_path
     #[Yo] Modify n_files, test/train split(test_size set to  0.1)
-    n_files = np.array([x[:-1] for x in open(Train_path).readlines() if str(x.split('/')[-3])[0]=='n'])
+    n_files = np.array([x[:-1] for x in open(args.train_path).readlines() if str(x.split('/')[-3])[0]=='n'])
     train_paths,val_paths = train_test_split(n_files[:args.train_num],test_size=args.val_ratio,random_state=999)
     
     print('Reading json files...')
