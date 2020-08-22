@@ -26,14 +26,14 @@ def cal_score(clean,enhanced):
     return round(s_pesq,5), round(s_stoi,5)
 
 
-def get_filepaths(directory,folders='BabyCry.wav,cafeteria_babble.wav',ftype='.wav'):
-    file_paths = []
-    folders = folders.split(',')
-    with open(directory, 'r') as f:
-        for line in f:
-            if str(line.split('/')[-3]) in folders:
-                file_paths.append(line[:-1])
-    return file_paths
+#def get_filepaths(directory,folders='BabyCry.wav,cafeteria_babble.wav',ftype='.wav'):
+#    file_paths = []
+#    folders = folders.split(',')
+#    with open(directory, 'r') as f:
+#        for line in f:
+#            if str(line.split('/')[-3]) in folders:
+#                file_paths.append(line[:-1])
+#    return file_paths
 
 
 

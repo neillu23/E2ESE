@@ -7,7 +7,7 @@ import librosa, scipy
 import pdb
 import numpy as np
 from scipy.io.wavfile import write as audiowrite
-from utils.util import get_filepaths, check_folder, recons_spec_phase, cal_score, make_spectrum
+from utils.util import  check_folder, recons_spec_phase, cal_score, make_spectrum
 maxv = np.iinfo(np.int16).max
 
 class Trainer:
@@ -154,7 +154,6 @@ class Trainer:
         self.model.eval()
         n_data,sr = librosa.load(test_file,sr=16000)
         name = test_file.split('/')[-1].split('_')[0] + '_' + test_file.split('/')[-1].split('_')[1]
-#         noisy = n_data
         n_folder = '/'.join(test_file.split('/')[-4:-1])
         name=name.replace('.wav','')
         c_name = name.split('_')[0]+'/'+name.split('_')[1]+'.WAV'
@@ -169,7 +168,7 @@ class Trainer:
         #[Yo] Change prediction
         pred = self.model.SEmodel(n_data).cpu().detach().numpy()
         enhanced = recons_spec_phase(pred.squeeze().transpose(),n_phase,n_len)
-        out_path = f"./Enhanced/{self.model.SEmodel.__class__.__name__}/{n_folder+'/'+test_file.split('/')[-1]}"
+        out_path = f"out/Enhanced/{self.model.SEmodel.__class__.__name__}/{n_folder+'/'+test_file.split('/')[-1]}"
         check_folder(out_path)
         audiowrite(out_path,16000,(enhanced* maxv).astype(np.int16))
 
@@ -196,17 +195,14 @@ class Trainer:
         #[Yo] Modify Test_path
         # load model
         self.model.eval()
-#         self.score_path = './Result/Test_Noisy.csv'
         checkpoint = torch.load(self.model_path)
         self.model.load_state_dict(checkpoint['model'])
         #checkpoint_key ['epoch', 'model', 'optimizer', 'best_loss']
         
-        #test_files = get_filepaths(self.Test_path['noisy'],folders='BabyCry.wav,cafeteria_babble.wav')
-        test_files = get_filepaths(self.Test_path['noisy'],folders='pinknoise.wav,n98.wav')
-        
+        test_files = np.array([x[:-1] for x in open(self.Test_path['noisy']).readlines()])
+        # test_clean = self.Test_path['clean']
         c_dict = np.load(self.args.c_dic,allow_pickle='TRUE').item()
         
-        #clean_path = self.Test_path['clean']
         check_folder(self.score_path)
         
         if os.path.exists(self.score_path):

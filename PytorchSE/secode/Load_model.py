@@ -10,7 +10,6 @@ import pdb
 from tqdm import tqdm 
 from joblib  import parallel_backend, Parallel, delayed
 from utils.load_asr import load_asr
-from utils.util import get_filepaths
 
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
