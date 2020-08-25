@@ -142,7 +142,7 @@ class Trainer:
             self.save_checkpoint()
             self.best_loss = self.val_loss
             
-    def write_score(self,test_file,c_dict):
+    def write_score(self,test_file,c_dict,tr_bol=False):
         
         self.model.eval()
         n_data,sr = librosa.load(test_file,sr=16000)
@@ -161,13 +161,20 @@ class Trainer:
         #[Yo] Change prediction
         pred = self.model.SEmodel(n_data).cpu().detach().numpy()
         enhanced = recons_spec_phase(pred.squeeze().transpose(),n_phase,n_len)
-        out_path = f"out/Enhanced/{self.model.SEmodel.__class__.__name__}/{n_folder+'/'+test_file.split('/')[-1]}"
+        if tr_bol:
+            out_path = f"out/Enhanced/trdata/{self.model.SEmodel.__class__.__name__}/{n_folder+'/'+test_file.split('/')[-1]}"
+            #score_path = self.score_path.replace('.csv','_trdata.csv')
+
+        else:
+            out_path = f"out/Enhanced/{self.model.SEmodel.__class__.__name__}/{n_folder+'/'+test_file.split('/')[-1]}"
+            score_path = self.score_path
+            s_pesq, s_stoi = cal_score(c_data,enhanced)
+            with open(score_path, 'a') as f:
+                f.write(f'{test_file},{s_pesq},{s_stoi}\n')
+
         check_folder(out_path)
         audiowrite(out_path,16000,(enhanced* maxv).astype(np.int16))
-        s_pesq, s_stoi = cal_score(c_data,enhanced)
         
-        with open(self.score_path, 'a') as f:
-            f.write(f'{test_file},{s_pesq},{s_stoi}\n')
 
         
     def train(self):
@@ -179,21 +186,26 @@ class Trainer:
             self.writer.add_scalars(f'{self.args.task}/{self.model.SEmodel.__class__.__name__}_{self.args.optim}_{self.args.loss_fn}', {'train': self.train_loss},self.epoch)
             self.writer.add_scalars(f'{self.args.task}/{self.model.SEmodel.__class__.__name__}_{self.args.optim}_{self.args.loss_fn}', {'val': self.val_loss},self.epoch)
             self.epoch += 1
+            '''
+
+            test_files = np.array([x[:-1] for x in open(self.args.train_noisy_wav).readlines()])
+            c_dict = np.load(self.args.tr_c_dic,allow_pickle='TRUE').item()
+            for i,test_file in enumerate(test_files):
+                if i%10==0:
+                    self.write_score(test_file,c_dict,tr_bol=True)
+            '''
             
     
             
-    def test(self, data_path=None):
+    def test(self):
         #[Yo] Modify Test_path
         # load model
         self.model.eval()
         checkpoint = torch.load(self.model_path)
         self.model.load_state_dict(checkpoint['model'])
         #checkpoint_key ['epoch', 'model', 'optimizer', 'best_loss']
-        
-        if data_path==None:
-            data_path=self.Test_path
-        print('testing data:',data_path)
-        test_files = np.array([x[:-1] for x in open(data_path).readlines()])
+        print('testing data:',self.Test_path)
+        test_files = np.array([x[:-1] for x in open(self.Test_path).readlines()])
         c_dict = np.load(self.args.ts_c_dic,allow_pickle='TRUE').item()
         
         check_folder(self.score_path)
