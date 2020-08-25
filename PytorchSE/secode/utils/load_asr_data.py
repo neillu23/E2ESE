@@ -7,7 +7,7 @@ import numpy as np
 import itertools 
 from tqdm import tqdm
 
-def load_asr(json_path,dic):
+def load_asr_data(json_path,dic):
     with open(json_path, "rb") as f:
         train_feature = json.load(f)["utts"]
 

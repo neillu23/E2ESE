@@ -1,6 +1,6 @@
 import os, argparse, torch, random, sys
-from Trainer import Trainer
-from Load_model import Load_model, Load_data
+from Trainer import train, test
+from Load_model import Load_SE_model, Load_data
 from utils.util import check_folder
 from tensorboardX import SummaryWriter
 from CombinedModel import CombinedModel
@@ -34,7 +34,7 @@ def get_args():
     parser.add_argument('--SEmodel', type=str, default='transformerencoder_03') 
     #####
     parser.add_argument('--val_ratio', type=float, default=0.1)
-    parser.add_argument('--train_num', type=int, default=None)
+    parser.add_argument('--train_num', type=int, default=4000)
     #####
     parser.add_argument('--ASRmodel_path', type=str, default='data/newctcloss.model.acc.best.entire.pth')
     parser.add_argument('--alpha', type=float, default=0) #loss = (1 - self.alpha) * SEloss + self.alpha * ASRloss
@@ -51,21 +51,21 @@ def get_args():
     parser.add_argument('--re_epochs', type=int, default=300)
     parser.add_argument('--checkpoint', type=str, default=None)
     args = parser.parse_args()
+    args = get_path(args)
     return args
 
 def get_path(args):
-    
-    checkpoint_path = f'out/checkpoint/{args.SEmodel}_{args.target}_epochs{args.epochs}' \
+    args.checkpoint_path = f'out/checkpoint/{args.SEmodel}_{args.target}_epochs{args.epochs}' \
                     f'_{args.optim}_{args.loss_fn}_batch{args.batch_size}_'\
                     f'lr{args.lr}.pth.tar'
-    model_path = f'out/save_model/{args.SEmodel}_{args.target}_epochs{args.epochs}' \
+    args.model_path = f'out/save_model/{args.SEmodel}_{args.target}_epochs{args.epochs}' \
                     f'_{args.optim}_{args.loss_fn}_batch{args.batch_size}_'\
                     f'lr{args.lr}.pth.tar'
-    score_path = f'out/Result/{args.SEmodel}_{args.target}_epochs{args.epochs}' \
+    args.score_path = f'out/Result/{args.SEmodel}_{args.target}_epochs{args.epochs}' \
                     f'_{args.optim}_{args.loss_fn}_batch{args.batch_size}_'\
                     f'lr{args.lr}.csv'
-    
-    return checkpoint_path,model_path,score_path
+    args.enhance_path = f'out/Enhanced/{args.SEmodel}/'
+    return args
 
 
 if __name__ == '__main__':
@@ -74,44 +74,35 @@ if __name__ == '__main__':
     print(cwd)
     print(SEED)
        
-    # get parameter
+    # get and process arguments
     args = get_args()
-    
-    # declair path
-    checkpoint_path,model_path,score_path = get_path(args)
     
     # tensorboard
     writer = SummaryWriter('out/logs')
-#     writer = SummaryWriter(f'{args.logs}/{args.SEmodel}/{args.optim}/{args.optim}/{args.loss_fn}')
-#     exec ("from models.{} import {} as model".format(args.SEmodel.split('_')[0], args.SEmodel))
-#     pdb.set_trace()
 
-    ASRmodel = torch.load(args.ASRmodel_path)
-    
-    exec (f"from models.{args.SEmodel.split('_')[0]} import {args.SEmodel} as SEmodel")
-    SEmodel     = SEmodel()
-    SEmodel, epoch, best_loss, optimizer, criterion, device = Load_model(args,SEmodel,checkpoint_path, model_path)
+    # load and construct the model
+    semodel, epoch, best_loss, optimizer, secriterion, device = Load_SE_model(args)
+    model = CombinedModel(args, semodel, secriterion)
+
+    # load data into the Loader
     loader = Load_data(args)
 
-    model = CombinedModel(SEmodel, ASRmodel, criterion, args.alpha)
-
+    # control parameter
     for param in model.SEmodel.parameters():
         param.requires_grad = True
-    
     for param in model.ASRmodel.parameters():
         param.requires_grad = False
     
     if args.retrain:
         args.epochs = args.re_epochs 
-        checkpoint_path,model_path,score_path = get_path(args)
     
-    Trainer = Trainer(model, args.epochs, epoch, best_loss, optimizer, 
-                      criterion, device, loader, args.test_noisy_wav, writer, model_path, score_path, args)
+    # Trainer = Trainer(model, args.epochs, epoch, best_loss, optimizer, 
+                    #   criterion, device, loader, args.test_noisy_wav, writer, model_path, score_path, args)
     try:
         if args.mode == 'train':
-
-            Trainer.train()
-        Trainer.test()
+            train(model, args.epochs, epoch, best_loss, optimizer, 
+                    device, loader,  writer, args.model_path, args)
+        test(model, device, args.test_noisy_wav, args.model_path, args.enhance_path, args.score_path, args)
         
     except KeyboardInterrupt:
         state_dict = {

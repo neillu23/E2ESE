@@ -10,221 +10,143 @@ from scipy.io.wavfile import write as audiowrite
 from utils.util import  check_folder, recons_spec_phase, cal_score, make_spectrum
 maxv = np.iinfo(np.int16).max
 
-class Trainer:
-    def __init__(self, model, epochs, epoch, best_loss, optimizer, 
-                      criterion, device, loader,Test_path, writer, model_path, score_path, args):
-        self.epoch = epoch
-        self.epochs = epochs
-        self.best_loss = best_loss
-        self.model = model.to(device)
-        self.optimizer = optimizer
-
-
-        self.device = device
-        self.loader = loader
-        self.criterion = criterion
-        self.Test_path = Test_path
-
-        self.train_loss = 0
-        self.SEtrain_loss = 0
-        self.val_loss = 0
-        self.SEval_loss = 0
-        self.writer = writer
-        self.model_path = model_path
-        self.score_path = score_path
-        self.args = args
-
-    def save_checkpoint(self,):
-        state_dict = {
-            'epoch': self.epoch,
-            'model': self.model.state_dict(),
-            'optimizer': self.optimizer.state_dict(),
-            'best_loss': self.best_loss
-            }
-        check_folder(self.model_path)
-        torch.save(state_dict, self.model_path)
+def save_checkpoint(epoch, model, optimizer, best_loss, model_path):
+    state_dict = {
+        'epoch': epoch,
+        'model': model.state_dict(),
+        'optimizer': optimizer.state_dict(),
+        'best_loss': best_loss
+        }
+    check_folder(model_path)
+    torch.save(state_dict, model_path)
     
-    def slice_data(self,data,slice_size=64):
-        # print("A",data,slice_size)
-        # print("B",torch.split(data,slice_size,dim=1))
-        # # print("C",torch.split(data,slice_size,dim=1)[:-1])
-        #[Neil] Modify for CustomDataset
-        data = torch.cat(torch.split(data,slice_size,dim=1),dim=0)
-        # data = torch.cat(torch.split(data,slice_size,dim=1)[:-1],dim=0)
-        # index = torch.randperm(data.shape[0])
-        # return data[index]
-        return data
-
-    def _train_step(self, noisy, clean, ilen, asr_y):
-        device = self.device
+def train_epoch(model, optimizer, device, loader, epoch, epochs, mode):
+    train_loss = 0
+    train_SE_loss = 0
+    progress = tqdm(total=len(loader[mode]), desc=f'Epoch {epoch} / Epoch {epochs} | {mode}', unit='step')
+    model.train()
+    model.SEmodel.train()
+    
+    for noisy, clean, ilen, asr_y in loader[mode]:
         noisy, clean, ilen, asr_y = noisy.to(device), clean.to(device), ilen.to(device), asr_y.to(device)
         
-        #[Yo] Change loss
-        loss = self.model(noisy, clean, ilen, asr_y)
-        pred = self.model.SEmodel(noisy)
+        # predict and calculate loss
+        loss = model(noisy, clean, ilen, asr_y)
+        pred = model.SEmodel(noisy)
+        SEloss = model.SEcriterion(pred, clean)
         
         '''
         for name, param in self.model.SEmodel.named_parameters():
             if param.requires_grad:
-                print('train',name, param.data)
+                print(mode,name, param.data)
         
         print('tr_pred',pred)
         '''
 
-        SEloss = self.criterion(pred, clean)
+        # train the model
+        if mode == 'train':
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
 
-        self.train_loss += loss.item()
-        self.SEtrain_loss += SEloss.item()
-        self.optimizer.zero_grad()
+        # record loss
+        train_loss += loss.item()
+        train_SE_loss += SEloss.item()
+        progress.update(1)
+   
+    progress.close()
+    train_loss /= len(loader[mode])
+    train_SE_loss /= len(loader[mode])
+    print(f'{mode}_loss:{train_loss}, SE{mode}_loss:{train_SE_loss}')
+    return train_loss, train_SE_loss
+           
+def train(model, epochs, epoch, best_loss, optimizer, 
+         device, loader, writer, model_path, args):
+    print('Training...')
 
-        loss.backward()
-        self.optimizer.step()
+    model = model.to(device)
+    while epoch < epochs:
+        train_loss, train_SE_loss = train_epoch(model, optimizer, device, loader, epoch, epochs,"train")
+        val_loss, val_SE_loss = train_epoch(model, optimizer, device, loader, epoch, epochs,"val")
+        # val_loss, val_SE_loss = val_epoch(model, optimizer, device, loader, epoch, epochs)
+        writer.add_scalars(f'{args.task}/{model.SEmodel.__class__.__name__}_{args.optim}_{args.loss_fn}', {'train': train_loss, 'train_SE': train_SE_loss},epoch)
+        writer.add_scalars(f'{args.task}/{model.SEmodel.__class__.__name__}_{args.optim}_{args.loss_fn}', {'val': val_loss, 'val_SE': val_SE_loss},epoch)
+        if best_loss > val_loss:
+            print(f"Save SE model to '{model_path}'")
+            save_checkpoint(epoch,model.SEmodel, optimizer, best_loss, model_path)
+            best_loss = val_loss
+        epoch += 1
 
-
-    def _train_epoch(self):
-        self.train_loss = 0
-        self.SEtrain_loss = 0
-
-        progress = tqdm(total=len(self.loader['train']), desc=f'Epoch {self.epoch} / Epoch {self.epochs} | train', unit='step')
-        self.model.train()
-        self.model.SEmodel.train()
-        
-        for noisy, clean, ilen, asr_y in self.loader['train']:
-            
-            self._train_step(noisy, clean, ilen, asr_y)
-            progress.update(1)
-       
-        progress.close()
-        self.train_loss /= len(self.loader['train'])
-        self.SEtrain_loss /= len(self.loader['train'])
-        print(f'train_loss:{self.train_loss}, SEtrain_loss:{self.SEtrain_loss}')
-
-    
-#     @torch.no_grad()
-    def _val_step(self, noisy, clean, ilen, asr_y):
-        device = self.device
-        noisy, clean, ilen, asr_y = noisy.to(device), clean.to(device), ilen.to(device), asr_y.to(device)
-        # [Yo] Delete data slicing, change pred
-        #noisy, clean = self.slice_data(noisy), self.slice_data(clean)
-        
-        pred = self.model.SEmodel(noisy)
-
-        SEloss = self.criterion(pred, clean)
-        E2Eloss = self.model(noisy, clean, ilen, asr_y)
-        self.SEval_loss += SEloss.item()
-        self.val_loss += E2Eloss.item()
-        
-
-    def _val_epoch(self):
-        self.val_loss = 0
-        self.SEval_loss = 0
-        progress = tqdm(total=len(self.loader['val']), desc=f'Epoch {self.epoch} / Epoch {self.epochs} | valid', unit='step')
-        self.model.eval()
-        self.model.SEmodel.eval()
-
+        '''
+        test_files = np.array([x[:-1] for x in open(self.args.train_noisy_wav).readlines()])
         c_dict = np.load(self.args.tr_c_dic,allow_pickle='TRUE').item()
-        
+        for i,test_file in enumerate(test_files):
+            if i%10==0:
+                self.write_score(test_file,c_dict,tr_bol=True)
+        '''
+def prepare_test(test_file, c_dict, device):
+    n_data,sr = librosa.load(test_file,sr=16000)
+    name = test_file.split('/')[-1].split('_')[0] + '_' + test_file.split('/')[-1].split('_')[1]
+    n_folder = '/'.join(test_file.split('/')[-4:-1])
+    name=name.replace('.wav','')
+    c_name = name.split('_')[0]+'/'+name.split('_')[1]+'.WAV'
+    c_folder=c_dict[name]
+    clean_file= os.path.join(c_folder, c_name)
+    c_wav,sr = librosa.load(clean_file,sr=16000)
+    n_data,n_phase,n_len = make_spectrum(y=n_data)
+    n_data = torch.from_numpy(n_data.transpose()).to(device).unsqueeze(0)
+    return n_data, n_phase, n_len, c_wav, n_folder
 
-        for noisy, clean, ilen, asr_y in self.loader['val']:
-            self._val_step(noisy, clean, ilen, asr_y)
-            progress.update(1)
-
-            
-        progress.close()
-
-        self.val_loss /= len(self.loader['val'])
-        self.SEval_loss /= len(self.loader['val'])
-        print(f'val_loss:{self.val_loss}, SEval_loss:{self.SEval_loss}')
-        
-        if self.best_loss > self.val_loss:
-            
-            print(f"Save model to '{self.model_path}'")
-            self.save_checkpoint()
-            self.best_loss = self.val_loss
-            
-    def write_score(self,test_file,c_dict,tr_bol=False):
-        
-        self.model.eval()
-        n_data,sr = librosa.load(test_file,sr=16000)
-        name = test_file.split('/')[-1].split('_')[0] + '_' + test_file.split('/')[-1].split('_')[1]
-        n_folder = '/'.join(test_file.split('/')[-4:-1])
-        name=name.replace('.wav','')
-        c_name = name.split('_')[0]+'/'+name.split('_')[1]+'.WAV'
-        c_folder=c_dict[name]
-        clean_file= os.path.join(c_folder, c_name)
-
-        #
-        c_data,sr = librosa.load(clean_file,sr=16000)
-        n_data,n_phase,n_len = make_spectrum(y=n_data)
-        n_data = torch.from_numpy(n_data.transpose()).to(self.device).unsqueeze(0)
-        
-        #[Yo] Change prediction
-        pred = self.model.SEmodel(n_data).cpu().detach().numpy()
-        enhanced = recons_spec_phase(pred.squeeze().transpose(),n_phase,n_len)
-        if tr_bol:
-            out_path = f"out/Enhanced/trdata/{self.model.SEmodel.__class__.__name__}/{n_folder+'/'+test_file.split('/')[-1]}"
-            #score_path = self.score_path.replace('.csv','_trdata.csv')
-
-        else:
-            out_path = f"out/Enhanced/{self.model.SEmodel.__class__.__name__}/{n_folder+'/'+test_file.split('/')[-1]}"
-            score_path = self.score_path
-            s_pesq, s_stoi = cal_score(c_data,enhanced)
-            with open(score_path, 'a') as f:
-                f.write(f'{test_file},{s_pesq},{s_stoi}\n')
-
-        check_folder(out_path)
-        audiowrite(out_path,16000,(enhanced* maxv).astype(np.int16))
-        
-
-        
-    def train(self):
-        print('Training...')
-       
-        while self.epoch < self.epochs:
-            self._train_epoch()
-            self._val_epoch()
-            self.writer.add_scalars(f'{self.args.task}/{self.model.SEmodel.__class__.__name__}_{self.args.optim}_{self.args.loss_fn}', {'train': self.train_loss},self.epoch)
-            self.writer.add_scalars(f'{self.args.task}/{self.model.SEmodel.__class__.__name__}_{self.args.optim}_{self.args.loss_fn}', {'val': self.val_loss},self.epoch)
-            self.epoch += 1
-            '''
-
-            test_files = np.array([x[:-1] for x in open(self.args.train_noisy_wav).readlines()])
-            c_dict = np.load(self.args.tr_c_dic,allow_pickle='TRUE').item()
-            for i,test_file in enumerate(test_files):
-                if i%10==0:
-                    self.write_score(test_file,c_dict,tr_bol=True)
-            '''
-            
     
+def write_score(model, device, test_file, c_dict, enhance_path, score_path, tr_bol=False):
+    n_data, n_phase, n_len, c_wav, n_folder = prepare_test(test_file, c_dict,device)
+    #[Yo] Change prediction
+    pred = model.SEmodel(n_data).cpu().detach().numpy()
+    enhanced = recons_spec_phase(pred.squeeze().transpose(),n_phase,n_len)
+    
+    # cal score
+    s_pesq, s_stoi = cal_score(c_wav,enhanced)
+    with open(score_path, 'a') as f:
+        f.write(f'{test_file},{s_pesq},{s_stoi}\n')
+    # write enhanced waveform
+    out_path = f"{enhance_path}/{n_folder+'/'+test_file.split('/')[-1]}"
+    check_folder(out_path)
+    audiowrite(out_path,16000,(enhanced* maxv).astype(np.int16))
+    # if tr_bol:
+    #     out_path = f"out/Enhanced/trdata/{model.SEmodel.__class__.__name__}/{n_folder+'/'+test_file.split('/')[-1]}"
+    #     #score_path = score_path.replace('.csv','_trdata.csv')
+    # else:
+        
+
+        
             
-    def test(self):
-        #[Yo] Modify Test_path
-        # load model
-        self.model.eval()
-        checkpoint = torch.load(self.model_path)
-        self.model.load_state_dict(checkpoint['model'])
-        #checkpoint_key ['epoch', 'model', 'optimizer', 'best_loss']
-        print('testing data:',self.Test_path)
-        test_files = np.array([x[:-1] for x in open(self.Test_path).readlines()])
-        c_dict = np.load(self.args.ts_c_dic,allow_pickle='TRUE').item()
-        
-        check_folder(self.score_path)
-        
-        if os.path.exists(self.score_path):
-            os.remove(self.score_path)
-        with open(self.score_path, 'a') as f:
-            f.write('Filename,PESQ,STOI\n')
-        print('Testing...')       
-        for test_file in tqdm(test_files):
-            self.write_score(test_file,c_dict)
-        
-        data = pd.read_csv(self.score_path)
+def test(model, device, test_noisy_wav, model_path, enhance_path, score_path, args):
 
-        pesq_mean = data['PESQ'].to_numpy().astype('float').mean()
-        stoi_mean = data['STOI'].to_numpy().astype('float').mean()
-
-        with open(self.score_path, 'a') as f:
-            f.write(','.join(('Average',str(pesq_mean),str(stoi_mean)))+'\n')
+    model = model.to(device)
+    # load model
+    model.eval()
+    checkpoint = torch.load(model_path)
+    model.SEmodel.load_state_dict(checkpoint['model'])
+    
+    # load data
+    test_files = np.array([x[:-1] for x in open(test_noisy_wav).readlines()])
+    c_dict = np.load(args.ts_c_dic,allow_pickle='TRUE').item()
+    
+    #open score file
+    check_folder(score_path)
+    if os.path.exists(score_path):
+        os.remove(score_path)
+    with open(score_path, 'a') as f:
+        f.write('Filename,PESQ,STOI\n')
+    print('Testing...')       
+    for test_file in tqdm(test_files):
+        write_score(model, device, test_file, c_dict, enhance_path, score_path)
+    
+    data = pd.read_csv(score_path)
+    pesq_mean = data['PESQ'].to_numpy().astype('float').mean()
+    stoi_mean = data['STOI'].to_numpy().astype('float').mean()
+    with open(score_path, 'a') as f:
+        f.write(','.join(('Average',str(pesq_mean),str(stoi_mean)))+'\n')
 #         with parallel_backend('multiprocessing', n_jobs=20):
 #             val_pesq = Parallel()(delayed(write_score)
 #                                              (16000,val_list[k][0], val_list[k][1], 'wb')
@@ -259,4 +181,104 @@ class data_prefetcher():
     def length(self):
         return self.len
     
+
     
+
+# class Trainer:
+#     def __init__(self, model, epochs, epoch, best_loss, optimizer, 
+#                       criterion, device, loader,Test_path, writer, model_path, score_path, args):
+#         self.epoch = epoch
+#         self.epochs = epochs
+#         self.best_loss = best_loss
+#         self.model = model.to(device)
+#         self.optimizer = optimizer
+
+
+#         self.device = device
+#         self.loader = loader
+#         self.criterion = criterion
+#         self.Test_path = Test_path
+
+#         self.train_loss = 0
+#         self.SEtrain_loss = 0
+#         self.val_loss = 0
+#         self.SEval_loss = 0
+#         self.writer = writer
+#         self.model_path = model_path
+#         self.score_path = score_path
+#         self.args = args
+
+    # def slice_data(self,data,slice_size=64):
+    #     # print("A",data,slice_size)
+    #     # print("B",torch.split(data,slice_size,dim=1))
+    #     # # print("C",torch.split(data,slice_size,dim=1)[:-1])
+    #     #[Neil] Modify for CustomDataset
+    #     data = torch.cat(torch.split(data,slice_size,dim=1),dim=0)
+    #     # data = torch.cat(torch.split(data,slice_size,dim=1)[:-1],dim=0)
+    #     # index = torch.randperm(data.shape[0])
+    #     # return data[index]
+    #     return data
+
+    # def _train_step(model, optimizer, device, noisy, clean, ilen, asr_y):
+    #     noisy, clean, ilen, asr_y = noisy.to(device), clean.to(device), ilen.to(device), asr_y.to(device)
+        
+    #     #[Yo] Change loss
+    #     loss = model(noisy, clean, ilen, asr_y)
+    #     pred = model.SEmodel(noisy)
+    #     SEloss = model.SEcriterion(pred, clean)
+        
+    #     '''
+    #     for name, param in self.model.SEmodel.named_parameters():
+    #         if param.requires_grad:
+    #             print('train',name, param.data)
+        
+    #     print('tr_pred',pred)
+    #     '''
+
+    #     optimizer.zero_grad()
+    #     loss.backward()
+    #     optimizer.step()
+
+    #     return loss.item(), SEloss.item()
+
+
+    
+#     @torch.no_grad()
+    # def _val_step(self, noisy, clean, ilen, asr_y):
+    #     device = self.device
+    #     noisy, clean, ilen, asr_y = noisy.to(device), clean.to(device), ilen.to(device), asr_y.to(device)
+    #     pred = self.model.SEmodel(noisy)
+
+    #     SEloss = self.criterion(pred, clean)
+    #     E2Eloss = self.model(noisy, clean, ilen, asr_y)
+    #     self.SEval_loss += SEloss.item()
+    #     self.val_loss += E2Eloss.item()
+        
+
+# def val_epoch(model, optimizer, device, loader, epoch, epochs):
+#     val_loss = 0
+#     SEval_loss = 0
+#     progress = tqdm(total=len(loader['val']), desc=f'Epoch {epoch} / Epoch {epochs} | valid', unit='step')
+#     model.eval()
+#     model.SEmodel.eval()
+    
+#     for noisy, clean, ilen, asr_y in self.loader['val']:
+#         noisy, clean, ilen, asr_y = noisy.to(device), clean.to(device), ilen.to(device), asr_y.to(device)
+        
+#         # predict and calculate loss
+#         loss = model(noisy, clean, ilen, asr_y)
+#         pred = model.SEmodel(noisy)
+#         SEloss = model.SEcriterion(pred, clean)
+        
+#         # record loss
+#         val_loss += loss.item()
+#         SEval_loss += SEloss.item()
+#         progress.update(1)
+        
+#     progress.close()
+#     val_loss /= len(loader['val'])
+#     val_SE_loss /= len(loader['val'])
+#     print(f'val_loss:{val_loss}, SEval_loss:{SEval_loss}')
+    
+#     return val_loss, val_SE_loss
+ 

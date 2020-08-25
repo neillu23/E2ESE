@@ -5,12 +5,14 @@ import math
 from espnet.nets.pytorch_backend.nets_utils import to_torch_tensor
 
 class CombinedModel(nn.Module):
-    def __init__(self, SEmodel, ASRmodel, SEcriterion, alpha):
+    def __init__(self, args, semodel, secriterion):
         super(CombinedModel, self).__init__()
-        self.SEmodel = SEmodel
-        self.ASRmodel = ASRmodel
-        self.SEcriterion = SEcriterion
-        self.alpha = alpha
+        #pretrained ASR model
+        self.ASRmodel = torch.load(args.ASRmodel_path)
+        #pretrained or new SE model
+        self.SEmodel = semodel
+        self.SEcriterion = secriterion
+        self.alpha = args.alpha
         self.Fbank = Fbank
             
     def forward(self, noisy, clean, ilen, y):

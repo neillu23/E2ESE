@@ -9,7 +9,9 @@ from torch.utils.data.dataset import Dataset
 import pdb
 from tqdm import tqdm 
 from joblib  import parallel_backend, Parallel, delayed
-from utils.load_asr import load_asr
+from utils.load_asr_data import load_asr_data
+import models.transformerencoder
+import models.BLSTM
 
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -25,15 +27,15 @@ def weights_init(m):
         nn.init.zeros_(m.bias)
         
         
-def load_checkoutpoint(model,optimizer,checkpoint_path):
+def load_checkoutpoint(semodel,optimizer,checkpoint_path):
 
     if os.path.isfile(checkpoint_path):
-        model.eval()
+        semodel.eval()
         print("=> loading checkpoint '{}'".format(checkpoint_path))
         checkpoint = torch.load(checkpoint_path)
         epoch = checkpoint['epoch']
         best_loss = checkpoint['best_loss']
-        model.load_state_dict(checkpoint['model'])
+        semodel.load_state_dict(checkpoint['model'])
         optimizer.load_state_dict(checkpoint['optimizer'])
         for state in optimizer.state.values():
             for k, v in state.items():
@@ -41,44 +43,41 @@ def load_checkoutpoint(model,optimizer,checkpoint_path):
                     state[k] = v.cuda()
         print(f"=> loaded checkpoint '{checkpoint_path}' (epoch {epoch})")
         
-        return model,epoch,best_loss,optimizer
+        return semodel, epoch, best_loss, optimizer
     else:
         raise NameError(f"=> no checkpoint found at '{checkpoint_path}'")
 
 
 
-def Load_model(args,model,checkpoint_path,model_path):
+def Load_SE_model(args):
+    semodel = eval("models."+args.SEmodel.split('_')[0]+"."+args.SEmodel+"()")
+
+    device = torch.device(f'cuda:{args.gpu}')
     
-    criterion = {
+    criterions = {
         'mse'     : nn.MSELoss(),
         'l1'      : nn.L1Loss(),
         'l1smooth': nn.SmoothL1Loss()}
-
-    device    = torch.device(f'cuda:{args.gpu}')
-#     pdb.set_trace()
-#     from models.DDAE import DDAE_01 as model
-
-    criterion = criterion[args.loss_fn].to(device)
+    criterion = criterions[args.loss_fn].to(device)
     
     optimizers = {
-        'adam'    : Adam(model.parameters(),lr=args.lr,weight_decay=0)}
+        'adam'    : Adam(semodel.parameters(),lr=args.lr,weight_decay=0)}
     optimizer = optimizers[args.optim]
     
+    
     if args.resume:
-        model,epoch,best_loss,optimizer = load_checkoutpoint(model,optimizer,checkpoint_path)
-    elif args.retrain:
-        model,epoch,best_loss,optimizer = load_checkoutpoint(model,optimizer,model_path)
-        
-        
+        semodel, epoch, best_loss, optimizer = load_checkoutpoint(semodel,optimizer,args.checkpoint_path)
+    elif args.retrain or args.mode == "test":
+        semodel, epoch, best_loss, optimizer = load_checkoutpoint(semodel,optimizer,args.model_path)
     else:
         epoch = 0
         best_loss = 10
-        model.apply(weights_init)
+        semodel.apply(weights_init)
         
-    para = count_parameters(model)
-    print(f'Num of model parameter : {para}')
+    para = count_parameters(semodel)
+    print(f'Num of SE model parameter : {para}')
         
-    return model,epoch,best_loss,optimizer,criterion,device
+    return semodel, epoch, best_loss, optimizer, criterion, device
 
 # [Yo]
 def pad_collate(batch):
@@ -114,7 +113,7 @@ def Load_data(args):
     asr_y_path = [item for item in args.asr_y_path.split(',')]
     asr_dict = {}
     for json_path in asr_y_path:
-        asr_dict = load_asr(json_path,asr_dict)
+        asr_dict = load_asr_data(json_path,asr_dict)
 
     train_dataset, val_dataset = CustomDataset(train_paths, asr_dict), CustomDataset(val_paths, asr_dict)
     # [Yo] Add padding collate_fn
