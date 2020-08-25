@@ -109,16 +109,6 @@ class Trainer:
         
         pred = self.model.SEmodel(noisy)
 
-        '''
-        for name, param in self.model.SEmodel.named_parameters():
-            if param.requires_grad:
-                print('val',name, param.data)
-        
-        print('val_pred',pred)
-        exit()
-        '''
-        
-
         SEloss = self.criterion(pred, clean)
         E2Eloss = self.model(noisy, clean, ilen, asr_y)
         self.SEval_loss += SEloss.item()
@@ -131,6 +121,9 @@ class Trainer:
         progress = tqdm(total=len(self.loader['val']), desc=f'Epoch {self.epoch} / Epoch {self.epochs} | valid', unit='step')
         self.model.eval()
         self.model.SEmodel.eval()
+
+        c_dict = np.load(self.args.tr_c_dic,allow_pickle='TRUE').item()
+        
 
         for noisy, clean, ilen, asr_y in self.loader['val']:
             self._val_step(noisy, clean, ilen, asr_y)
@@ -171,8 +164,6 @@ class Trainer:
         out_path = f"out/Enhanced/{self.model.SEmodel.__class__.__name__}/{n_folder+'/'+test_file.split('/')[-1]}"
         check_folder(out_path)
         audiowrite(out_path,16000,(enhanced* maxv).astype(np.int16))
-
-#         s_pesq, s_stoi = cal_score(c_data,noisy)
         s_pesq, s_stoi = cal_score(c_data,enhanced)
         
         with open(self.score_path, 'a') as f:
@@ -191,7 +182,7 @@ class Trainer:
             
     
             
-    def test(self):
+    def test(self, data_path=None):
         #[Yo] Modify Test_path
         # load model
         self.model.eval()
@@ -199,9 +190,11 @@ class Trainer:
         self.model.load_state_dict(checkpoint['model'])
         #checkpoint_key ['epoch', 'model', 'optimizer', 'best_loss']
         
-        test_files = np.array([x[:-1] for x in open(self.Test_path['noisy']).readlines()])
-        # test_clean = self.Test_path['clean']
-        c_dict = np.load(self.args.c_dic,allow_pickle='TRUE').item()
+        if data_path==None:
+            data_path=self.Test_path
+        print('testing data:',data_path)
+        test_files = np.array([x[:-1] for x in open(data_path).readlines()])
+        c_dict = np.load(self.args.ts_c_dic,allow_pickle='TRUE').item()
         
         check_folder(self.score_path)
         
@@ -209,7 +202,7 @@ class Trainer:
             os.remove(self.score_path)
         with open(self.score_path, 'a') as f:
             f.write('Filename,PESQ,STOI\n')
-        print('Testing...')
+        print('Testing...')       
         for test_file in tqdm(test_files):
             self.write_score(test_file,c_dict)
         

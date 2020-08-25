@@ -19,10 +19,13 @@ cudnn.deterministic = True
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--train_path', type=str, default="")
-    parser.add_argument('--test_noisy', type=str, default="")
-    parser.add_argument('--test_clean', type=str, default="")
     parser.add_argument('--mode', type=str, default='train')
+    #####
+    parser.add_argument('--train_noisy', type=str, default="data/train/noisy_spec_filelist.txt")
+    parser.add_argument('--test_noisy', type=str, default="data/test/noisy_spec_filelist.txt")
+    parser.add_argument('--train_noisy_wav', type=str, default="data/train/noisy_wav_filelist.txt")
+    parser.add_argument('--test_noisy_wav', type=str, default="data/test/noisy_wav_filelist.txt")
+    #####
     parser.add_argument('--epochs', type=int, default=100)
     parser.add_argument('--batch_size', type=int, default=4)  
     parser.add_argument('--lr', type=float, default=0.00000005)
@@ -36,7 +39,9 @@ def get_args():
     parser.add_argument('--ASRmodel_path', type=str, default='data/newctcloss.model.acc.best.entire.pth')
     parser.add_argument('--alpha', type=float, default=0) #loss = (1 - self.alpha) * SEloss + self.alpha * ASRloss
     parser.add_argument('--asr_y_path', type=str, default='data/data_test.json,data/data_train_dev.json,data/data_train_nodev.json') 
-    parser.add_argument('--c_dic', type=str, default='data/c_wavfolder_dic.npy') 
+    #####
+    parser.add_argument('--tr_c_dic', type=str, default='data/train/c_wavfolder_dic.npy') 
+    parser.add_argument('--ts_c_dic', type=str, default='data/test/c_wavfolder_dic.npy') 
     #####
     parser.add_argument('--gpu', type=str, default='0')
     parser.add_argument('--target', type=str, default='MAP') #'MAP' or 'IRM'
@@ -74,7 +79,6 @@ if __name__ == '__main__':
     
     # declair path
     checkpoint_path,model_path,score_path = get_path(args)
-    Test_path = {'noisy':args.test_noisy,'clean':args.test_clean}
     
     # tensorboard
     writer = SummaryWriter('out/logs')
@@ -102,9 +106,10 @@ if __name__ == '__main__':
         checkpoint_path,model_path,score_path = get_path(args)
     
     Trainer = Trainer(model, args.epochs, epoch, best_loss, optimizer, 
-                      criterion, device, loader, Test_path, writer, model_path, score_path, args)
+                      criterion, device, loader, args.test_noisy_wav, writer, model_path, score_path, args)
     try:
         if args.mode == 'train':
+
             Trainer.train()
         Trainer.test()
         
