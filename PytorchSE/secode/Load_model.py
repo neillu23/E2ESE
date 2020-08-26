@@ -12,6 +12,7 @@ from joblib  import parallel_backend, Parallel, delayed
 from utils.load_asr_data import load_asr_data
 import models.transformerencoder
 import models.BLSTM
+from utils.util import getfilename
 
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -103,7 +104,10 @@ def Load_data(args):
     val_paths = []
     #[Neil] Modify fea_path
     #[Yo] Modify n_files, test/train split(test_size set to  0.1)
-    n_files = np.array([x[:-1] for x in open(args.train_noisy).readlines() if str(x.split('/')[-3])[0]=='n'])
+    
+    train_spec_noisy_list=getfilename(os.path.join(args.spec_path,'train/noisy'))
+    n_files = np.array(train_spec_noisy_list)
+    
     if args.train_num is None:
         train_paths,val_paths = train_test_split(n_files,test_size=args.val_ratio,random_state=999)
     else:
@@ -144,6 +148,7 @@ class CustomDataset(Dataset):
             n_folder = '/'.join(p.split('/')[-4:-1])
             self.clean += [torch.load(p.replace(n_folder,"clean"))]
 
+            
             name = p.split('/')[-1].replace('.pt','')
             self.asr_ilen += [self.asr_dict[name][0]]
             self.ars_y += [self.asr_dict[name][1]]
@@ -154,25 +159,6 @@ class CustomDataset(Dataset):
     def __len__(self):
         return len(self.n_paths)
 
-
-'''class CustomDataset(Dataset):
-
-    def __init__(self, paths,clean_path):   # initial logic happens like transform
-
-        self.n_paths = paths
-        self.c_paths = [os.path.join(clean_path,'noise_'+'_'.join((noisy_path.split('/')[-1].split('_')[-2:])) ) for noisy_path in paths]
-
-
-    def __getitem__(self, index):
-
-        noisy,clean = torch.load(self.n_paths[index]),torch.load(self.c_paths[index]) 
-
-
-        return noisy,clean
-
-    def __len__(self):  # return count of sample we have
-        
-        return len(self.n_paths)'''
 
 
         

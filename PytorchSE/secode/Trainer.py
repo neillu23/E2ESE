@@ -7,7 +7,7 @@ import librosa, scipy
 import pdb
 import numpy as np
 from scipy.io.wavfile import write as audiowrite
-from utils.util import  check_folder, recons_spec_phase, cal_score, make_spectrum
+from utils.util import  check_folder, recons_spec_phase, cal_score, make_spectrum, get_cleanwav_dic, getfilename
 maxv = np.iinfo(np.int16).max
 
 def save_checkpoint(epoch, model, optimizer, best_loss, model_path):
@@ -34,14 +34,6 @@ def train_epoch(model, optimizer, device, loader, epoch, epochs, mode):
         loss = model(noisy, clean, ilen, asr_y)
         pred = model.SEmodel(noisy)
         SEloss = model.SEcriterion(pred, clean)
-        
-        '''
-        for name, param in self.model.SEmodel.named_parameters():
-            if param.requires_grad:
-                print(mode,name, param.data)
-        
-        print('tr_pred',pred)
-        '''
 
         # train the model
         if mode == 'train':
@@ -68,7 +60,6 @@ def train(model, epochs, epoch, best_loss, optimizer,
     while epoch < epochs:
         train_loss, train_SE_loss = train_epoch(model, optimizer, device, loader, epoch, epochs,"train")
         val_loss, val_SE_loss = train_epoch(model, optimizer, device, loader, epoch, epochs,"val")
-        # val_loss, val_SE_loss = val_epoch(model, optimizer, device, loader, epoch, epochs)
         writer.add_scalars(f'{args.task}/{model.SEmodel.__class__.__name__}_{args.optim}_{args.loss_fn}', {'train': train_loss, 'train_SE': train_SE_loss},epoch)
         writer.add_scalars(f'{args.task}/{model.SEmodel.__class__.__name__}_{args.optim}_{args.loss_fn}', {'val': val_loss, 'val_SE': val_SE_loss},epoch)
         if best_loss > val_loss:
@@ -77,13 +68,6 @@ def train(model, epochs, epoch, best_loss, optimizer,
             best_loss = val_loss
         epoch += 1
 
-        '''
-        test_files = np.array([x[:-1] for x in open(self.args.train_noisy_wav).readlines()])
-        c_dict = np.load(self.args.tr_c_dic,allow_pickle='TRUE').item()
-        for i,test_file in enumerate(test_files):
-            if i%10==0:
-                self.write_score(test_file,c_dict,tr_bol=True)
-        '''
 def prepare_test(test_file, c_dict, device):
     n_data,sr = librosa.load(test_file,sr=16000)
     name = test_file.split('/')[-1].split('_')[0] + '_' + test_file.split('/')[-1].split('_')[1]
@@ -108,6 +92,7 @@ def write_score(model, device, test_file, c_dict, enhance_path, score_path, tr_b
     s_pesq, s_stoi = cal_score(c_wav,enhanced)
     with open(score_path, 'a') as f:
         f.write(f'{test_file},{s_pesq},{s_stoi}\n')
+
     # write enhanced waveform
     out_path = f"{enhance_path}/{n_folder+'/'+test_file.split('/')[-1]}"
     check_folder(out_path)
@@ -120,17 +105,16 @@ def write_score(model, device, test_file, c_dict, enhance_path, score_path, tr_b
 
         
             
-def test(model, device, test_noisy_wav, model_path, enhance_path, score_path, args):
-
+def test(model, device, noisy_path, clean_path, enhance_path, score_path, args):
     model = model.to(device)
     # load model
     model.eval()
-    checkpoint = torch.load(model_path)
-    model.SEmodel.load_state_dict(checkpoint['model'])
+    #checkpoint = torch.load(model_path)
+    #model.SEmodel.load_state_dict(checkpoint['model'])
     
     # load data
-    test_files = np.array([x[:-1] for x in open(test_noisy_wav).readlines()])
-    c_dict = np.load(args.ts_c_dic,allow_pickle='TRUE').item()
+    test_files = np.array(getfilename(noisy_path))
+    c_dict = get_cleanwav_dic(clean_path)
     
     #open score file
     check_folder(score_path)
@@ -138,6 +122,7 @@ def test(model, device, test_noisy_wav, model_path, enhance_path, score_path, ar
         os.remove(score_path)
     with open(score_path, 'a') as f:
         f.write('Filename,PESQ,STOI\n')
+
     print('Testing...')       
     for test_file in tqdm(test_files):
         write_score(model, device, test_file, c_dict, enhance_path, score_path)
@@ -147,11 +132,7 @@ def test(model, device, test_noisy_wav, model_path, enhance_path, score_path, ar
     stoi_mean = data['STOI'].to_numpy().astype('float').mean()
     with open(score_path, 'a') as f:
         f.write(','.join(('Average',str(pesq_mean),str(stoi_mean)))+'\n')
-#         with parallel_backend('multiprocessing', n_jobs=20):
-#             val_pesq = Parallel()(delayed(write_score)
-#                                              (16000,val_list[k][0], val_list[k][1], 'wb')
-#                                               for k in range(len(val_list)))
-        
+
         
 class data_prefetcher():
     def __init__(self, loader):
