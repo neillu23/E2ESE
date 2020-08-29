@@ -3,8 +3,33 @@ import numpy as np
 from pypesq import pesq
 from pystoi.stoi import stoi
 import scipy
+import tqdm
 
 epsilon = np.finfo(float).eps
+
+def getfilename(folder):
+
+    fnlist=[]
+    for dirpath, _, files in os.walk(folder):
+        for file_name in files:
+            if file_name.endswith(".wav") or file_name.endswith(".WAV") or file_name.endswith(".pt"):
+                fnlist.append(os.path.join(dirpath, file_name))
+                
+    
+    print('folder:',folder,', len:',len(fnlist))
+    return fnlist
+
+def get_cleanwav_dic(clean_wav_path):
+    print('get clean wav path:', clean_wav_path)
+    clean_wav=getfilename(clean_wav_path)
+    c_files = np.array(clean_wav)
+    c_dict={}
+    for c_ in c_files:
+        c_tmp=c_.replace('.WAV','').split('/')
+        k=c_tmp[-2]+'_'+c_tmp[-1]
+        c_path=c_.replace(c_tmp[-2]+'/'+c_tmp[-1]+'.WAV','')
+        c_dict[k]=c_path
+    return c_dict
 
 
 

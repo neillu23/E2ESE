@@ -9,7 +9,7 @@ from tqdm import tqdm
 import sys
 
 sys.path.insert(0,os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from secode.utils.util import check_folder, make_spectrum
+from secode.utils.util import check_folder, make_spectrum, getfilename, get_cleanwav_dic
 
 #os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
@@ -21,26 +21,13 @@ def get_args():
     parser.add_argument('--data', type=str, default="trdata")
     
     # Input wave file list
-    parser.add_argument('--clean_wav_path', type=str, default="/home/neillu/Downloads/TIMIT_Manner_E2E/TRAIN/")
-    parser.add_argument('--noisy_wav_path', type=str, default="/home/neillu/Desktop/Workspace/TIMIT_noisy_40hr_wav/TrNoisy/")
+    parser.add_argument('--clean_wav_path', type=str, default='')
+    parser.add_argument('--noisy_wav_path', type=str, default='')
     
     # Output spectrum path
-    parser.add_argument('--spec_path', type=str, default="/home/neillu/Desktop/Workspace/TIMIT_Manner_E2E_spec/")
+    parser.add_argument('--spec_path', type=str, default='')
     args = parser.parse_args()
     return args
-
-
-def getfilename(folder):
-
-    fnlist=[]
-    for dirpath, _, files in os.walk(folder):
-        for file_name in files:
-            if file_name.endswith(".wav") or file_name.endswith(".WAV"):
-                fnlist.append(os.path.join(dirpath, file_name))
-                
-    
-    print('folder:',folder,', len:',len(fnlist))
-    return fnlist
 
 def normalize(metrix):
     # pdb.set_trace()
@@ -91,16 +78,16 @@ if __name__ == '__main__':
     
     if args.data=='trdata':
         args.spec_path+='train/'
-        check_folder(os.path.join(os.getcwd(),'data/train/'))
-        noisy_spec_list='data/train/noisy_spec_filelist.txt'
-        c_wavfolder_dic='data/train/c_wavfolder_dic.npy'
-        noisy_wav_list='data/train/noisy_wav_filelist.txt'
+        #check_folder(os.path.join(os.getcwd(),'data/train/'))
+        #noisy_spec_list='data/train/noisy_spec_filelist.txt'
+        #c_wavfolder_dic='data/train/c_wavfolder_dic.npy'
+        #noisy_wav_list='data/train/noisy_wav_filelist.txt'
     else: 
         args.spec_path+='test/'
-        check_folder(os.path.join(os.getcwd(),'data/test/'))
-        noisy_spec_list='data/test/noisy_spec_filelist.txt'
-        c_wavfolder_dic='data/test/c_wavfolder_dic.npy'
-        noisy_wav_list='data/test/noisy_wav_filelist.txt'
+        #check_folder(os.path.join(os.getcwd(),'data/test/'))
+        #noisy_spec_list='data/test/noisy_spec_filelist.txt'
+        #c_wavfolder_dic='data/test/c_wavfolder_dic.npy'
+        #noisy_wav_list='data/test/noisy_wav_filelist.txt'
 
 
     noisy_wav=getfilename(args.noisy_wav_path)
@@ -110,16 +97,19 @@ if __name__ == '__main__':
     n_files = np.array(noisy_wav)
     c_files = np.array(clean_wav)
 
+    '''
     if os.path.exists(noisy_wav_list):
             os.remove(noisy_wav_list)
 
     with open(noisy_wav_list, 'w') as f:
         for item in noisy_wav:
             f.write('%s\n' % item)
+    '''
 
 
 
-    n_ptfiles =[]
+    #n_ptfiles =[]
+    
     c_dict={}
     for i,c_ in enumerate(tqdm(c_files)):
         c_tmp=c_.replace('.WAV','').split('/')
@@ -127,9 +117,10 @@ if __name__ == '__main__':
         c_path=c_.replace(c_tmp[-2]+'/'+c_tmp[-1]+'.WAV','')
         c_dict[k]=c_path
         
-  
-    np.save(c_wavfolder_dic, c_dict) 
+        
     '''
+    np.save(c_wavfolder_dic, c_dict) 
+    
     if os.path.exists(args.spec_path):
             os.rmdir(args.spec_path)
     '''
@@ -156,11 +147,13 @@ if __name__ == '__main__':
 
         check_folder(out_name_n)
         torch.save(torch.from_numpy(n_data.transpose()),out_name_n)
-        n_ptfiles.append(out_name_n)
+        #n_ptfiles.append(out_name_n)
 
+    '''
     if os.path.exists(noisy_spec_list):
         os.remove(noisy_spec_list)
     with open(noisy_spec_list, 'w') as f:
         for item in n_ptfiles:
             f.write('%s\n' % item)
+    '''
     
