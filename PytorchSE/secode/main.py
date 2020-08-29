@@ -26,9 +26,9 @@ def get_args():
     parser.add_argument('--train_noisy_wav', type=str, default="data/train/noisy_wav_filelist.txt")
     parser.add_argument('--test_noisy_wav', type=str, default="data/test/noisy_wav_filelist.txt")
     #####
-    parser.add_argument('--epochs', type=int, default=100)
+    parser.add_argument('--epochs', type=int, default=150)
     parser.add_argument('--batch_size', type=int, default=4)  
-    parser.add_argument('--lr', type=float, default=0.00000005)
+    parser.add_argument('--lr', type=float, default=0.00005)
     parser.add_argument('--loss_fn', type=str, default='l1')
     parser.add_argument('--optim', type=str, default='adam')
     parser.add_argument('--SEmodel', type=str, default='transformerencoder_03') 
