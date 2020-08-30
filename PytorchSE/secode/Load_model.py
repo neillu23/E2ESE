@@ -105,7 +105,7 @@ def Load_data(args):
     #[Neil] Modify fea_path
     #[Yo] Modify n_files, test/train split(test_size set to  0.1)
     
-    train_spec_noisy_list=getfilename(os.path.join(args.spec_path,'train/noisy'))
+    train_spec_noisy_list=getfilename(os.path.join(args.out_path,'spec','train/noisy'))
     n_files = np.array(train_spec_noisy_list)
     
     if args.train_num is None:

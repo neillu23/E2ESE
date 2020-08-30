@@ -25,7 +25,7 @@ def get_args():
     parser.add_argument('--noisy_wav_path', type=str, default='')
     
     # Output spectrum path
-    parser.add_argument('--spec_path', type=str, default='')
+    parser.add_argument('--out_path', type=str, default='')
     args = parser.parse_args()
     return args
 
@@ -74,16 +74,18 @@ if __name__ == '__main__':
 
     # get parameter
     args = get_args()
-    
+    spec_path = os.path.join(args.out_path,"spec/")
     
     if args.data=='trdata':
-        args.spec_path+='train/'
+        spec_path = os.path.join(spec_path,"train/")
+        #args.spec_path+='train/'
         #check_folder(os.path.join(os.getcwd(),'data/train/'))
         #noisy_spec_list='data/train/noisy_spec_filelist.txt'
         #c_wavfolder_dic='data/train/c_wavfolder_dic.npy'
         #noisy_wav_list='data/train/noisy_wav_filelist.txt'
     else: 
-        args.spec_path+='test/'
+        spec_path = os.path.join(spec_path,"test/")
+        #args.spec_path+='test/'
         #check_folder(os.path.join(os.getcwd(),'data/test/'))
         #noisy_spec_list='data/test/noisy_spec_filelist.txt'
         #c_wavfolder_dic='data/test/c_wavfolder_dic.npy'
@@ -130,7 +132,7 @@ if __name__ == '__main__':
         n_folder = n_.split('/')[-3]+ '/' + n_.split('/')[-2]
         name=name.replace('.wav','')
         c_fn=name.split('_')[0]+'/'+name.split('_')[1]+'.WAV'
-        out_name_c = os.path.join(args.spec_path+'clean/', name+'.pt')
+        out_name_c = os.path.join(spec_path+'clean/', name+'.pt')
         out_name_n = out_name_c.replace('clean','noisy/'+n_folder)
         
         if name in c_dict:
