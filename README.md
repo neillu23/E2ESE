@@ -14,7 +14,13 @@
 6. run espnet/egs/timit/asr1/run.sh --stage 3 for new ASR model with new fbank.
 
 7. copy the pre-trained model from espnet.
+cp /espnet/egs/timit/asr_fbank/exp/train_nodev_pytorch_train/results/model.loss.best.entire PytorchSE/data/newctcloss.model.acc.best.entire.pth
 
+
+#Pytorch SE
+1.modify PATHS in the run.sh
+
+2.sh run.sh 
 
 
 
