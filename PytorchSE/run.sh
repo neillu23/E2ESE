@@ -25,5 +25,5 @@ fi
 
 if [ ${stage} -le 2 ]; then
     echo "stage 2 : Testing"
-    python secode/main.py --mode 'test' --test_noisy $TEST_NOISY --test_clean $TEST_CLEAN
+    python secode/main.py --mode 'test' --out_path $OUT_PATH --test_noisy $TEST_NOISY --test_clean $TEST_CLEAN
 fi
