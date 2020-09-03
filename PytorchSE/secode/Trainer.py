@@ -24,8 +24,13 @@ def train_epoch(model, optimizer, device, loader, epoch, epochs, mode):
     train_loss = 0
     train_SE_loss = 0
     progress = tqdm(total=len(loader[mode]), desc=f'Epoch {epoch} / Epoch {epochs} | {mode}', unit='step')
-    model.train()
-    model.SEmodel.train()
+    if mode == 'train':
+        model.train()
+        model.SEmodel.train()
+    else:
+        model.eval()
+        model.SEmodel.eval()
+        torch.no_grad()
     
     for noisy, clean, ilen, asr_y in loader[mode]:
         noisy, clean, ilen, asr_y = noisy.to(device), clean.to(device), ilen.to(device), asr_y.to(device)
@@ -109,6 +114,7 @@ def test(model, device, noisy_path, clean_path, enhance_path, score_path, args):
     model = model.to(device)
     # load model
     model.eval()
+    torch.no_grad()
     #checkpoint = torch.load(model_path)
     #model.SEmodel.load_state_dict(checkpoint['model'])
     
