@@ -8,7 +8,7 @@ import torch.backends.cudnn as cudnn
 import pandas as pd
 import pdb
 
-#os.environ["CUDA_VISIBLE_DEVICES"] = "4"
+# os.environ["CUDA_VISIBLE_DEVICES"] = "4"
 # fix random
 SEED = 999
 random.seed(SEED)
@@ -25,7 +25,7 @@ def get_args():
     parser.add_argument('--train_clean', type=str, default='')
     parser.add_argument('--test_noisy', type=str, default='')
     parser.add_argument('--test_clean', type=str, default='')
-    parser.add_argument('--spec_path', type=str, default='')
+    parser.add_argument('--out_path', type=str, default='')
 
     '''
     parser.add_argument('--train_noisy', type=str, default="data/train/noisy_spec_filelist.txt")
@@ -42,7 +42,7 @@ def get_args():
     parser.add_argument('--SEmodel', type=str, default='transformerencoder_03') 
     #####
     parser.add_argument('--val_ratio', type=float, default=0.1)
-    parser.add_argument('--train_num', type=int, default=None)
+    parser.add_argument('--train_num', type=int, default=4000)
     #####
     parser.add_argument('--ASRmodel_path', type=str, default='data/newctcloss.model.acc.best.entire.pth')
     parser.add_argument('--alpha', type=float, default=0.3) #loss = (1 - self.alpha) * SEloss + self.alpha * ASRloss
@@ -63,16 +63,16 @@ def get_args():
     return args
 
 def get_path(args):
-    args.checkpoint_path = f'out/checkpoint/{args.SEmodel}_{args.target}_epochs{args.epochs}' \
-                    f'_{args.optim}_{args.loss_fn}_batch{args.batch_size}_'\
+    args.checkpoint_path = f'{args.out_path}/checkpoint/{args.SEmodel}_{args.target}_epochs{args.epochs}' \
+                    f'_{args.optim}_{args.loss_fn}_alpha{args.alpha}_batch{args.batch_size}_'\
                     f'lr{args.lr}.pth.tar'
-    args.model_path = f'out/save_model/{args.SEmodel}_{args.target}_epochs{args.epochs}' \
-                    f'_{args.optim}_{args.loss_fn}_batch{args.batch_size}_'\
+    args.model_path = f'{args.out_path}/save_model/{args.SEmodel}_{args.target}_epochs{args.epochs}' \
+                    f'_{args.optim}_{args.loss_fn}_alpha{args.alpha}_batch{args.batch_size}_'\
                     f'lr{args.lr}.pth.tar'
-    args.score_path = f'out/Result/{args.SEmodel}_{args.target}_epochs{args.epochs}' \
-                    f'_{args.optim}_{args.loss_fn}_batch{args.batch_size}_'\
+    args.score_path = f'{args.out_path}/Result/{args.SEmodel}_{args.target}_epochs{args.epochs}' \
+                    f'_{args.optim}_{args.loss_fn}_alpha{args.alpha}_batch{args.batch_size}_'\
                     f'lr{args.lr}.csv'
-    args.enhance_path = f'out/Enhanced/{args.SEmodel}/'
+    args.enhance_path = f'{args.out_path}/Enhanced/{args.SEmodel}/'
     return args
 
 
@@ -86,7 +86,7 @@ if __name__ == '__main__':
     args = get_args()
     
     # tensorboard
-    writer = SummaryWriter('out/logs')
+    writer = SummaryWriter(f'{args.out_path}/logs')
 
     # load and construct the model
     semodel, epoch, best_loss, optimizer, secriterion, device = Load_SE_model(args)
