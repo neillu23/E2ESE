@@ -7,7 +7,7 @@
 
 3. python gen_fbank.py to generate the FBank feature in txt file.
 
-4. copy-feats ark,t:fbank.txt ark,csp:fbank.ark,fbank.scp
+4. copy-feats ark,t:fbank.txt ark,scp:fbank.ark,fbank.scp
 
 5. python change_data.py to modify fbank feature in data.json.
 
