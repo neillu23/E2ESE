@@ -12,15 +12,16 @@ class CombinedModel(nn.Module):
         #pretrained or new SE model
         self.SEmodel = semodel
         self.SEcriterion = secriterion
-        self.alpha = args.alpha
+        # self.alpha = args.alpha
         self.Fbank = Fbank
             
-    def forward(self, noisy, clean, ilen, y):
+    def forward(self, noisy, clean, ilen, y, alpha):
         enhanced = self.SEmodel(noisy)
         SEloss = self.SEcriterion(enhanced, clean)
         
         Fbank=self.Fbank()
         enhanced_fbank = Fbank.forward(enhanced)
+        enhanced_fbank_clean = Fbank.forward(clean)
         
         '''
         hs_pad, hlens = to_torch_tensor(enhanced_fbank), ilen
@@ -29,8 +30,9 @@ class CombinedModel(nn.Module):
         loss_ctc = self.ASRmodel.ctc(hs_pad, hlens, y)
         '''
         
-        ASRloss = self.ASRmodel(enhanced_fbank,ilen,y)
-        loss = (1 - self.alpha) * SEloss + self.alpha * ASRloss
+        # ASRloss = self.ASRmodel(enhanced_fbank,ilen,y)
+        ASRloss = self.ASRmodel(enhanced_fbank,ilen,y,enhanced_fbank_clean,True)
+        loss = (1 - alpha) * SEloss + alpha * ASRloss
         return loss
 
 class Fbank(nn.Module):
