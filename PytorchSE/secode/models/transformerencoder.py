@@ -214,13 +214,13 @@ class transformerencoder_03(nn.Module):
         )
     
     def forward(self,x):
-#         print(x.shape)
+#        print('1, ',x.shape)
         x = self.first_layer(x.permute(0,2,1))
-#         print(x.shape)
+#        print('2, ',x.shape)
         x = self.encoder(x.permute(0,2,1))
-#         print(x.shape)
+#        print('3, ',x.shape)
         x = self.last_layer(x)
-#         print(x.shape)
+#        print('4, ', x.shape)
         
         return x
     

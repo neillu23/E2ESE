@@ -1,5 +1,5 @@
 
-stage=1
+stage=2
 
 # Input waveform data
 TRAIN_NOISY="/home/neillu/Desktop/Workspace/TIMIT_noisy_40hr_wav/TrNoisy/"
@@ -8,7 +8,7 @@ TEST_NOISY="/home/neillu/Downloads/NewTsNoisy"
 TEST_CLEAN="/home/neillu/Downloads/TIMIT_Manner_E2E/TEST/"
 
 # Output spectrum path
-OUT_PATH="/home/neillu/Desktop/Workspace/E2E/"
+OUT_PATH="/home/neillu/Desktop/Workspace/E2E"
 
 
 if [ ${stage} -eq 0 ]; then
@@ -20,7 +20,7 @@ fi
 
 if [ ${stage} -le 1 ]; then
     echo "stage 1 : Training"
-    python secode/main.py --mode 'train' --out_path $OUT_PATH --train_clean $TRAIN_CLEAN 
+    python secode/main.py --mode 'train' --out_path $OUT_PATH --train_clean $TRAIN_CLEAN --train_num 4000
 fi
 
 if [ ${stage} -le 2 ]; then
