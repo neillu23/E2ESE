@@ -24,15 +24,20 @@ def train_epoch(model, optimizer, device, loader, epoch, epochs, mode):
     train_loss = 0
     train_SE_loss = 0
     progress = tqdm(total=len(loader[mode]), desc=f'Epoch {epoch} / Epoch {epochs} | {mode}', unit='step')
-    model.train()
-    model.SEmodel.train()
+    if mode == 'train':
+        model.train()
+        model.SEmodel.train()
+    else:
+        model.eval()
+        model.SEmodel.eval()
+        torch.no_grad()
     
     for noisy, clean, ilen, asr_y in loader[mode]:
         noisy, clean, ilen, asr_y = noisy.to(device), clean.to(device), ilen.to(device), asr_y.to(device)
         
         # predict and calculate loss
         loss = model(noisy, clean, ilen, asr_y)
-        pred = model.SEmodel(noisy)
+        pred = model.SEmodel(noisy).detach()
         SEloss = model.SEcriterion(pred, clean)
 
         # train the model
@@ -40,15 +45,18 @@ def train_epoch(model, optimizer, device, loader, epoch, epochs, mode):
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+        else:
+            torch.no_grad()
 
         # record loss
-        train_loss += loss.item()
-        train_SE_loss += SEloss.item()
+        train_loss += loss.detach().item()
+        train_SE_loss += SEloss.detach().item()
         progress.update(1)
    
     progress.close()
-    train_loss /= len(loader[mode])
-    train_SE_loss /= len(loader[mode])
+    train_loss = train_loss/len(loader[mode])
+    train_SE_loss = train_SE_loss/len(loader[mode])
+
     print(f'{mode}_loss:{train_loss}, SE{mode}_loss:{train_SE_loss}')
     return train_loss, train_SE_loss
            
@@ -109,6 +117,7 @@ def test(model, device, noisy_path, clean_path, enhance_path, score_path, args):
     model = model.to(device)
     # load model
     model.eval()
+    torch.no_grad()
     #checkpoint = torch.load(model_path)
     #model.SEmodel.load_state_dict(checkpoint['model'])
     
@@ -117,9 +126,13 @@ def test(model, device, noisy_path, clean_path, enhance_path, score_path, args):
     c_dict = get_cleanwav_dic(clean_path)
     
     #open score file
-    check_folder(score_path)
+   
     if os.path.exists(score_path):
         os.remove(score_path)
+    
+    check_folder(score_path)
+    print('Save PESQ&STOI results to:', score_path)
+    
     with open(score_path, 'a') as f:
         f.write('Filename,PESQ,STOI\n')
 
