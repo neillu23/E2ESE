@@ -1,5 +1,6 @@
 import librosa
 import os
+import sys
 import numpy as np
 import scipy
 import torch
@@ -7,8 +8,8 @@ from tqdm import tqdm
 from fbank import spec2fbank
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "2"
-clean_list="/home/neillu/End2End/TIMIT_filelist.txt"
-out_file="/mnt/Data/user_vol_2/user_neillu/TIMIT_fbank/timti_fbank.txt"
+clean_list= sys.argv[1] #"/home/neillu/End2End/TIMIT_filelist.txt"
+out_file= sys.argv[2] #"/mnt/Data/user_vol_2/user_neillu/TIMIT_fbank/timit_fbank.txt"
 
 
 def check_path(path):
@@ -32,8 +33,8 @@ def make_spectrum(filename=None, y=None, is_slice=False, feature_type='logmag', 
             y = np.float32(y)
 
     ### Normalize waveform
-    # y = y / np.max(abs(y)) / 2.
-    
+    y = y / np.max(abs(y)) #/ 2.
+
     #[Neil] modify the frame size
     #D = librosa.stft(y,center=False, n_fft=512, hop_length=160,win_length=512,window=scipy.signal.hamming)
     D = librosa.stft(y,center=False, n_fft=400, hop_length=160,win_length=400,window=scipy.signal.hamming)

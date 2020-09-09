@@ -1,9 +1,10 @@
 import json
+import sys
 
-scp_file = "/mnt/Data/user_vol_2/user_neillu/TIMIT_fbank/timti_fbank.scp"
+scp_file = sys.argv[1] # "/mnt/Data/user_vol_2/user_neillu/TIMIT_fbank/timti_fbank.scp"
 
-data_in = "/mnt/Data/user_vol_2/user_neillu/End2End/espnet/egs/timit/asr1/dump/test/deltafalse/data.json"
-data_out = "test_data.json"
+data_in = sys.argv[2] #"/mnt/Data/user_vol_2/user_neillu/End2End/espnet/egs/timit/asr1/dump/test/deltafalse/data.json"
+data_out = sys.argv[3] #"test_data.json"
 
 feature_map={}
 with open(scp_file) as f:
