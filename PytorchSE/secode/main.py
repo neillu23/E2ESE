@@ -8,7 +8,7 @@ import torch.backends.cudnn as cudnn
 import pandas as pd
 import pdb
 
-# os.environ["CUDA_VISIBLE_DEVICES"] = "4"
+os.environ["CUDA_VISIBLE_DEVICES"] = "4"
 # fix random
 SEED = 999
 random.seed(SEED)
@@ -45,7 +45,8 @@ def get_args():
     parser.add_argument('--train_num', type=int, default=4000)
     #####
     parser.add_argument('--ASRmodel_path', type=str, default='data/newctcloss.model.acc.best.entire.pth')
-    parser.add_argument('--alpha', type=float, default=0.3) #loss = (1 - self.alpha) * SEloss + self.alpha * ASRloss
+    parser.add_argument('--alpha', type=float, default=0.001) #loss = (1 - self.alpha) * SEloss + self.alpha * ASRloss
+    parser.add_argument('--alpha_epoch', type=float, default=70) # alpha = 0 when epoch < alpha_epoch
     parser.add_argument('--asr_y_path', type=str, default='data/data_test.json,data/data_train_dev.json,data/data_train_nodev.json') 
     #####
     #parser.add_argument('--tr_c_dic', type=str, default='data/train/c_wavfolder_dic.npy') 
@@ -56,7 +57,8 @@ def get_args():
     parser.add_argument('--task', type=str, default='DNS_SE') 
     parser.add_argument('--resume' , action='store_true')
     parser.add_argument('--retrain', action='store_true')
-    parser.add_argument('--re_epochs', type=int, default=300)
+    parser.add_argument('--after_alpha_epoch', action='store_true') # on when test or retrain using after_alpha_epoch model
+    parser.add_argument('--re_epochs', type=int, default=150)
     parser.add_argument('--checkpoint', type=str, default=None)
     args = parser.parse_args()
     args = get_path(args)
@@ -64,14 +66,20 @@ def get_args():
 
 def get_path(args):
     args.checkpoint_path = f'{args.out_path}/checkpoint/{args.SEmodel}_{args.target}_epochs{args.epochs}' \
-                    f'_{args.optim}_{args.loss_fn}_alpha{args.alpha}_batch{args.batch_size}_'\
+                    f'_{args.optim}_{args.loss_fn}_alpha{args.alpha}_alpha_epoch{args.alpha_epoch}_batch{args.batch_size}_'\
                     f'lr{args.lr}.pth.tar'
     args.model_path = f'{args.out_path}/save_model/{args.SEmodel}_{args.target}_epochs{args.epochs}' \
-                    f'_{args.optim}_{args.loss_fn}_alpha{args.alpha}_batch{args.batch_size}_'\
+                    f'_{args.optim}_{args.loss_fn}_alpha{args.alpha}_alpha_epoch{args.alpha_epoch}_batch{args.batch_size}_'\
                     f'lr{args.lr}.pth.tar'
     args.score_path = f'{args.out_path}/Result/{args.SEmodel}_{args.target}_epochs{args.epochs}' \
-                    f'_{args.optim}_{args.loss_fn}_alpha{args.alpha}_batch{args.batch_size}_'\
+                    f'_{args.optim}_{args.loss_fn}_alpha{args.alpha}_alpha_epoch{args.alpha_epoch}_batch{args.batch_size}_'\
                     f'lr{args.lr}.csv'
+
+    if args.after_alpha_epoch:
+        args.model_path = args.model_path.replace("_alpha_epoch","_after_alpha_epoch")
+        args.checkpoint_path = args.checkpoint_path.replace("_alpha_epoch","_after_alpha_epoch")
+        args.score_path = args.score_path.replace("_alpha_epoch","_after_alpha_epoch")
+
     args.enhance_path = f'{args.out_path}/Enhanced/{args.SEmodel}/'
     return args
 
