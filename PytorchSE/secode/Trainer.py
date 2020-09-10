@@ -78,7 +78,7 @@ def train(model, epochs, epoch, best_loss, optimizer,
         writer.add_scalars(f'{args.task}/{model.SEmodel.__class__.__name__}_{args.optim}_{args.loss_fn}', {'train': train_loss, 'train_SE': train_SE_loss},epoch)
         writer.add_scalars(f'{args.task}/{model.SEmodel.__class__.__name__}_{args.optim}_{args.loss_fn}', {'val': val_loss, 'val_SE': val_SE_loss},epoch)
         if best_loss > val_loss:
-            if epoch >= args.alpha_epoch:
+            if epoch >= args.alpha_epoch and "after_alpha_epoch" not in model_path:
                 model_path = model_path.replace("_alpha_epoch","_after_alpha_epoch")
             print(f"Save SE model to '{model_path}'")
             save_checkpoint(epoch,model.SEmodel, optimizer, best_loss, model_path)
