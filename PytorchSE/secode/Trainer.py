@@ -23,6 +23,7 @@ def save_checkpoint(epoch, model, optimizer, best_loss, model_path):
 def train_epoch(model, optimizer, device, loader, epoch, epochs, mode, alpha):
     train_loss = 0
     train_SE_loss = 0
+    train_ASR_loss = 0
     progress = tqdm(total=len(loader[mode]), desc=f'Epoch {epoch} / Epoch {epochs} | {mode}', unit='step')
     if mode == 'train':
         model.train()
@@ -36,9 +37,11 @@ def train_epoch(model, optimizer, device, loader, epoch, epochs, mode, alpha):
         noisy, clean, ilen, asr_y = noisy.to(device), clean.to(device), ilen.to(device), asr_y.to(device)
         
         # predict and calculate loss
-        loss = model(noisy, clean, ilen, asr_y, alpha)
-        pred = model.SEmodel(noisy).detach()
-        SEloss = model.SEcriterion(pred, clean)
+        SEloss, ASRloss = model(noisy, clean, ilen, asr_y)
+        #pred = model.SEmodel(noisy).detach()
+        #SEloss = model.SEcriterion(pred, clean)
+        loss = (1 - alpha) * SEloss + alpha * ASRloss
+        
 
         # train the model
         if mode == 'train':
@@ -51,13 +54,15 @@ def train_epoch(model, optimizer, device, loader, epoch, epochs, mode, alpha):
         # record loss
         train_loss += loss.detach().item()
         train_SE_loss += SEloss.detach().item()
+        train_ASR_loss += ASRloss.detach().item()
         progress.update(1)
    
     progress.close()
     train_loss = train_loss/len(loader[mode])
     train_SE_loss = train_SE_loss/len(loader[mode])
+    train_ASR_loss = train_ASR_loss/len(loader[mode])
 
-    print(f'{mode}_loss:{train_loss}, SE{mode}_loss:{train_SE_loss}')
+    print(f'{mode}_loss:{train_loss}, SE{mode}_loss:{train_SE_loss}, ASR{mode}_loss:{train_ASR_loss}')
     return train_loss, train_SE_loss
            
 def train(model, epochs, epoch, best_loss, optimizer, 
@@ -73,10 +78,15 @@ def train(model, epochs, epoch, best_loss, optimizer,
         if epoch == args.alpha_epoch:
             best_loss = 100
 
-        train_loss, train_SE_loss = train_epoch(model, optimizer, device, loader, epoch, epochs,"train",alpha)
-        val_loss, val_SE_loss = train_epoch(model, optimizer, device, loader, epoch, epochs,"val",alpha)
+        train_SE_loss, train_ASR_loss = train_epoch(model, optimizer, device, loader, epoch, epochs, "train",alpha)
+        val_SE_loss, val_ASR_loss = train_epoch(model, optimizer, device, loader, epoch, epochs,"val",alpha)
+        
+        train_loss=(1 - alpha) * train_SE_loss + alpha * train_ASR_loss
+        val_loss=(1 - alpha) * val_SE_loss + alpha * val_ASR_loss
+        
         writer.add_scalars(f'{args.task}/{model.SEmodel.__class__.__name__}_{args.optim}_{args.loss_fn}', {'train': train_loss, 'train_SE': train_SE_loss},epoch)
         writer.add_scalars(f'{args.task}/{model.SEmodel.__class__.__name__}_{args.optim}_{args.loss_fn}', {'val': val_loss, 'val_SE': val_SE_loss},epoch)
+        
         if best_loss > val_loss:
             if epoch >= args.alpha_epoch and "after_alpha_epoch" not in model_path:
                 model_path = model_path.replace("_alpha_epoch","_after_alpha_epoch")
@@ -100,11 +110,24 @@ def prepare_test(test_file, c_dict, device):
     return n_data, n_phase, n_len, c_wav, n_folder
 
     
-def write_score(model, device, test_file, c_dict, enhance_path, score_path, tr_bol=False):
+def write_score(model, device, test_file, c_dict, enhance_path, ilen, y, score_path, asr_result):
     n_data, n_phase, n_len, c_wav, n_folder = prepare_test(test_file, c_dict,device)
     #[Yo] Change prediction
-    pred = model.SEmodel(n_data).cpu().detach().numpy()
-    enhanced = recons_spec_phase(pred.squeeze().transpose(),n_phase,n_len)
+    
+    if asr_result:
+        ### Get ASR prediction results
+        enhanced_spec = model.SEmodel(n_data)
+        Fbank=model.Fbank()
+        enhanced_fbank = Fbank.forward(enhanced_spec)
+        enhanced_fbank, ilen, y = enhanced_fbank.to(device), ilen.to(device), y.to(device)
+        model.ASRmodel.report_cer=True
+        model.ASRmodel.report_wer=True
+        ASRloss = model.ASRmodel(enhanced_fbank, ilen.unsqueeze(0), y.unsqueeze(0))
+        enhanced_spec=enhanced_spec.cpu().detach().numpy()
+        enhanced = recons_spec_phase(enhanced_spec.squeeze().transpose(),n_phase,n_len)
+    else:
+        enhanced_spec = model.SEmodel(n_data).cpu().detach().numpy()
+        enhanced = recons_spec_phase(enhanced_spec.squeeze().transpose(),n_phase,n_len)
     
     # cal score
     s_pesq, s_stoi = cal_score(c_wav,enhanced)
@@ -115,15 +138,10 @@ def write_score(model, device, test_file, c_dict, enhance_path, score_path, tr_b
     out_path = f"{enhance_path}/{n_folder+'/'+test_file.split('/')[-1]}"
     check_folder(out_path)
     audiowrite(out_path,16000,(enhanced* maxv).astype(np.int16))
-    # if tr_bol:
-    #     out_path = f"out/Enhanced/trdata/{model.SEmodel.__class__.__name__}/{n_folder+'/'+test_file.split('/')[-1]}"
-    #     #score_path = score_path.replace('.csv','_trdata.csv')
-    # else:
-        
 
         
             
-def test(model, device, noisy_path, clean_path, enhance_path, score_path, args):
+def test(model, device, noisy_path, clean_path, asr_dict, enhance_path, score_path, args):
     model = model.to(device)
     # load model
     model.eval()
@@ -148,7 +166,9 @@ def test(model, device, noisy_path, clean_path, enhance_path, score_path, args):
 
     print('Testing...')       
     for test_file in tqdm(test_files):
-        write_score(model, device, test_file, c_dict, enhance_path, score_path)
+        name=test_file.split('/')[-1].replace('.wav','')
+        ilen, y=asr_dict[name][0],asr_dict[name][1]
+        write_score(model, device, test_file, c_dict, enhance_path, ilen, y, score_path, args.asr_result)
     
     data = pd.read_csv(score_path)
     pesq_mean = data['PESQ'].to_numpy().astype('float').mean()
@@ -285,4 +305,3 @@ class data_prefetcher():
 #     print(f'val_loss:{val_loss}, SEval_loss:{SEval_loss}')
     
 #     return val_loss, val_SE_loss
- 

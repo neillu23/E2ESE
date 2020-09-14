@@ -97,6 +97,14 @@ def pad_collate(batch):
     
     return xx_pad, yy_pad, torch.tensor(asr_l), asr_y_pad
 
+def Load_y_dict(args):
+    print('Reading json files...')
+    asr_y_path = [item for item in args.asr_y_path.split(',')]
+    asr_dict = {}
+    for json_path in asr_y_path:
+        asr_dict = load_asr_data(json_path,asr_dict)
+    return asr_dict
+
 
 def Load_data(args):
 

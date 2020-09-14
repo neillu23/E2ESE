@@ -15,7 +15,7 @@ class CombinedModel(nn.Module):
         # self.alpha = args.alpha
         self.Fbank = Fbank
             
-    def forward(self, noisy, clean, ilen, y, alpha):
+    def forward(self, noisy, clean, ilen, y):
         enhanced = self.SEmodel(noisy)
         SEloss = self.SEcriterion(enhanced, clean)
         
@@ -32,8 +32,8 @@ class CombinedModel(nn.Module):
         
         # ASRloss = self.ASRmodel(enhanced_fbank,ilen,y)
         ASRloss = self.ASRmodel(enhanced_fbank,ilen,y,enhanced_fbank_clean,True)
-        loss = (1 - alpha) * SEloss + alpha * ASRloss
-        return loss
+        #loss = (1 - alpha) * SEloss + alpha * ASRloss
+        return SEloss, ASRloss
 
 class Fbank(nn.Module):
     def __init__(self,sample_rate=16000,NFFT=400,nfilt=26,gpu=0):
