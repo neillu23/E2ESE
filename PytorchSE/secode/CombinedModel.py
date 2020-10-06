@@ -30,8 +30,8 @@ class CombinedModel(nn.Module):
         loss_ctc = self.ASRmodel.ctc(hs_pad, hlens, y)
         '''
         
-        # ASRloss = self.ASRmodel(enhanced_fbank,ilen,y)
-        ASRloss = self.ASRmodel(enhanced_fbank,ilen,y,enhanced_fbank_clean,True)
+        ASRloss = self.ASRmodel(enhanced_fbank,ilen,y)
+        #ASRloss = self.ASRmodel(enhanced_fbank,ilen,y,enhanced_fbank_clean,True)
         #loss = (1 - alpha) * SEloss + alpha * ASRloss
         return SEloss, ASRloss
 
