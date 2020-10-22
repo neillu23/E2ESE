@@ -97,7 +97,7 @@ def train(model, epochs, epoch, best_loss, optimizer,
         epoch += 1
 
 def prepare_test(test_file, c_dict, device):
-    n_data,sr = librosa.load(test_file,sr=16000)
+    n_wav,sr = librosa.load(test_file,sr=16000)
     name = test_file.split('/')[-1].split('_')[0] + '_' + test_file.split('/')[-1].split('_')[1]
     n_folder = '/'.join(test_file.split('/')[-4:-1])
     name=name.replace('.wav','')
@@ -105,39 +105,53 @@ def prepare_test(test_file, c_dict, device):
     c_folder=c_dict[name]
     clean_file= os.path.join(c_folder, c_name)
     c_wav,sr = librosa.load(clean_file,sr=16000)
-    n_data,n_phase,n_len = make_spectrum(y=n_data)
-    n_data = torch.from_numpy(n_data.transpose()).to(device).unsqueeze(0)
-    return n_data, n_phase, n_len, c_wav, n_folder
+    n_spec,n_phase,n_len = make_spectrum(y=n_wav)
+    c_spec,c_phase,c_len = make_spectrum(y=c_wav)
+    n_spec = torch.from_numpy(n_spec.transpose()).to(device).unsqueeze(0)
+    c_spec = torch.from_numpy(c_spec.transpose()).to(device).unsqueeze(0)
+    return n_spec, n_phase, n_len, c_wav, c_spec, c_phase, n_folder
 
     
 def write_score(model, device, test_file, c_dict, enhance_path, ilen, y, score_path, asr_result):
-    n_data, n_phase, n_len, c_wav, n_folder = prepare_test(test_file, c_dict,device)
+    n_spec, n_phase, n_len, c_wav, c_spec, c_phase, n_folder = prepare_test(test_file, c_dict,device)
     #[Yo] Change prediction
     
-    if asr_result:
+    if asr_result!=None:
         ### Get ASR prediction results
-        enhanced_spec = model.SEmodel(n_data)
         Fbank=model.Fbank()
-        enhanced_fbank = Fbank.forward(enhanced_spec)
-        enhanced_fbank, ilen, y = enhanced_fbank.to(device), ilen.to(device), y.to(device)
         model.ASRmodel.report_cer=True
         model.ASRmodel.report_wer=True
-        ASRloss = model.ASRmodel(enhanced_fbank, ilen.unsqueeze(0), y.unsqueeze(0))
-        enhanced_spec=enhanced_spec.cpu().detach().numpy()
-        enhanced = recons_spec_phase(enhanced_spec.squeeze().transpose(),n_phase,n_len)
-    else:
-        enhanced_spec = model.SEmodel(n_data).cpu().detach().numpy()
-        enhanced = recons_spec_phase(enhanced_spec.squeeze().transpose(),n_phase,n_len)
-    
-    # cal score
-    s_pesq, s_stoi = cal_score(c_wav,enhanced)
-    with open(score_path, 'a') as f:
-        f.write(f'{test_file},{s_pesq},{s_stoi}\n')
+        if asr_result == 'enhanced':
+            spec = model.SEmodel(n_spec)
+            phase = n_phase
+        elif asr_result == 'noisy':
+            spec = n_spec
+            phase = n_phase
+        else:
+            spec= c_spec
+            phase = c_phase
+        
+        fbank = Fbank.forward(spec)
+        fbank, ilen, y = fbank.to(device), ilen.to(device), y.to(device)
 
-    # write enhanced waveform
-    out_path = f"{enhance_path}/{n_folder+'/'+test_file.split('/')[-1]}"
-    check_folder(out_path)
-    audiowrite(out_path,16000,(enhanced* maxv).astype(np.int16))
+        ASRloss, asr_cer = model.ASRmodel(fbank, ilen.unsqueeze(0), y.unsqueeze(0))
+        spec=spec.cpu().detach().numpy()
+        recon_wav = recons_spec_phase(spec.squeeze().transpose(),phase,n_len)
+        # cal score
+        s_pesq, s_stoi = cal_score(c_wav,recon_wav)
+        with open(score_path, 'a') as f:
+            f.write(f'{test_file},{s_pesq},{s_stoi},{asr_cer}\n')
+    else:
+        enhanced_spec = model.SEmodel(n_spec).cpu().detach().numpy()
+        enhanced = recons_spec_phase(enhanced_spec.squeeze().transpose(),n_phase,n_len)
+        # cal score
+        s_pesq, s_stoi = cal_score(c_wav,enhanced)
+        with open(score_path, 'a') as f:
+            f.write(f'{test_file},{s_pesq},{s_stoi}\n')
+        # write enhanced waveform
+        out_path = f"{enhance_path}/{n_folder+'/'+test_file.split('/')[-1]}"
+        check_folder(out_path)
+        audiowrite(out_path,16000,(enhanced* maxv).astype(np.int16))
 
         
             

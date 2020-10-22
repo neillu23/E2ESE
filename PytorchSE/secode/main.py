@@ -8,7 +8,7 @@ import torch.backends.cudnn as cudnn
 import pandas as pd
 import pdb
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "9"
 # fix random
 SEED = 999
 random.seed(SEED)
@@ -44,8 +44,8 @@ def get_args():
     parser.add_argument('--val_ratio', type=float, default=0.1)
     parser.add_argument('--train_num', type=int, default=4000)
     #####
-    parser.add_argument('--ASRmodel_path', type=str, default='data/newctcloss_normwave.model.acc.best.entire.pth')
-    parser.add_argument('--alpha', type=float, default=0.1) #loss = (1 - self.alpha) * SEloss + self.alpha * ASRloss
+    parser.add_argument('--ASRmodel_path', type=str, default='data/newctcloss.model.acc.best.entire.pth')
+    parser.add_argument('--alpha', type=float, default=0.001) #loss = (1 - self.alpha) * SEloss + self.alpha * ASRloss
     parser.add_argument('--alpha_epoch', type=float, default=70) # alpha = 0 when epoch < alpha_epoch
     parser.add_argument('--asr_y_path', type=str, default='data/data_test.json,data/data_train_dev.json,data/data_train_nodev.json') 
     #####
@@ -57,7 +57,7 @@ def get_args():
     parser.add_argument('--task', type=str, default='DNS_SE') 
     parser.add_argument('--resume' , action='store_true')
     parser.add_argument('--retrain', action='store_true')
-    parser.add_argument('--asr_result', action='store_true')
+    parser.add_argument('--asr_result', type=str, default=None)
     parser.add_argument('--after_alpha_epoch', action='store_true') # on when test or retrain using after_alpha_epoch model
     parser.add_argument('--re_epochs', type=int, default=150)
     parser.add_argument('--checkpoint', type=str, default=None)
@@ -122,7 +122,8 @@ if __name__ == '__main__':
         if args.mode == 'train':
             train(model, args.epochs, epoch, best_loss, optimizer, 
                     device, loader,  writer, args.model_path, args)
-        test(model, device, args.test_noisy, args.test_clean, asr_dict, args.enhance_path, args.score_path, args)
+        else:
+            test(model, device, args.test_noisy, args.test_clean, asr_dict, args.enhance_path, args.score_path, args)
         
     except KeyboardInterrupt:
         state_dict = {
