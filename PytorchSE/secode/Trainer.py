@@ -38,8 +38,6 @@ def train_epoch(model, optimizer, device, loader, epoch, epochs, mode, alpha):
         
         # predict and calculate loss
         SEloss, ASRloss = model(noisy, clean, ilen, asr_y)
-        #pred = model.SEmodel(noisy).detach()
-        #SEloss = model.SEcriterion(pred, clean)
         loss = (1 - alpha) * SEloss + alpha * ASRloss
         
 
@@ -61,9 +59,8 @@ def train_epoch(model, optimizer, device, loader, epoch, epochs, mode, alpha):
     train_loss = train_loss/len(loader[mode])
     train_SE_loss = train_SE_loss/len(loader[mode])
     train_ASR_loss = train_ASR_loss/len(loader[mode])
-
     print(f'{mode}_loss:{train_loss}, SE{mode}_loss:{train_SE_loss}, ASR{mode}_loss:{train_ASR_loss}')
-    return train_loss, train_SE_loss
+    return train_SE_loss, train_ASR_loss
            
 def train(model, epochs, epoch, best_loss, optimizer, 
          device, loader, writer, model_path, args):
@@ -80,10 +77,10 @@ def train(model, epochs, epoch, best_loss, optimizer,
 
         train_SE_loss, train_ASR_loss = train_epoch(model, optimizer, device, loader, epoch, epochs, "train",alpha)
         val_SE_loss, val_ASR_loss = train_epoch(model, optimizer, device, loader, epoch, epochs,"val",alpha)
-        
+
         train_loss=(1 - alpha) * train_SE_loss + alpha * train_ASR_loss
         val_loss=(1 - alpha) * val_SE_loss + alpha * val_ASR_loss
-        
+          
         writer.add_scalars(f'{args.task}/{model.SEmodel.__class__.__name__}_{args.optim}_{args.loss_fn}', {'train': train_loss, 'train_SE': train_SE_loss},epoch)
         writer.add_scalars(f'{args.task}/{model.SEmodel.__class__.__name__}_{args.optim}_{args.loss_fn}', {'val': val_loss, 'val_SE': val_SE_loss},epoch)
         
@@ -160,8 +157,6 @@ def test(model, device, noisy_path, clean_path, asr_dict, enhance_path, score_pa
     # load model
     model.eval()
     torch.no_grad()
-    #checkpoint = torch.load(model_path)
-    #model.SEmodel.load_state_dict(checkpoint['model'])
     
     # load data
     test_files = np.array(getfilename(noisy_path))
@@ -219,103 +214,3 @@ class data_prefetcher():
     def length(self):
         return self.len
     
-
-    
-
-# class Trainer:
-#     def __init__(self, model, epochs, epoch, best_loss, optimizer, 
-#                       criterion, device, loader,Test_path, writer, model_path, score_path, args):
-#         self.epoch = epoch
-#         self.epochs = epochs
-#         self.best_loss = best_loss
-#         self.model = model.to(device)
-#         self.optimizer = optimizer
-
-
-#         self.device = device
-#         self.loader = loader
-#         self.criterion = criterion
-#         self.Test_path = Test_path
-
-#         self.train_loss = 0
-#         self.SEtrain_loss = 0
-#         self.val_loss = 0
-#         self.SEval_loss = 0
-#         self.writer = writer
-#         self.model_path = model_path
-#         self.score_path = score_path
-#         self.args = args
-
-    # def slice_data(self,data,slice_size=64):
-    #     # print("A",data,slice_size)
-    #     # print("B",torch.split(data,slice_size,dim=1))
-    #     # # print("C",torch.split(data,slice_size,dim=1)[:-1])
-    #     #[Neil] Modify for CustomDataset
-    #     data = torch.cat(torch.split(data,slice_size,dim=1),dim=0)
-    #     # data = torch.cat(torch.split(data,slice_size,dim=1)[:-1],dim=0)
-    #     # index = torch.randperm(data.shape[0])
-    #     # return data[index]
-    #     return data
-
-    # def _train_step(model, optimizer, device, noisy, clean, ilen, asr_y):
-    #     noisy, clean, ilen, asr_y = noisy.to(device), clean.to(device), ilen.to(device), asr_y.to(device)
-        
-    #     #[Yo] Change loss
-    #     loss = model(noisy, clean, ilen, asr_y)
-    #     pred = model.SEmodel(noisy)
-    #     SEloss = model.SEcriterion(pred, clean)
-        
-    #     '''
-    #     for name, param in self.model.SEmodel.named_parameters():
-    #         if param.requires_grad:
-    #             print('train',name, param.data)
-        
-    #     print('tr_pred',pred)
-    #     '''
-
-    #     optimizer.zero_grad()
-    #     loss.backward()
-    #     optimizer.step()
-
-    #     return loss.item(), SEloss.item()
-
-
-    
-#     @torch.no_grad()
-    # def _val_step(self, noisy, clean, ilen, asr_y):
-    #     device = self.device
-    #     noisy, clean, ilen, asr_y = noisy.to(device), clean.to(device), ilen.to(device), asr_y.to(device)
-    #     pred = self.model.SEmodel(noisy)
-
-    #     SEloss = self.criterion(pred, clean)
-    #     E2Eloss = self.model(noisy, clean, ilen, asr_y)
-    #     self.SEval_loss += SEloss.item()
-    #     self.val_loss += E2Eloss.item()
-        
-
-# def val_epoch(model, optimizer, device, loader, epoch, epochs):
-#     val_loss = 0
-#     SEval_loss = 0
-#     progress = tqdm(total=len(loader['val']), desc=f'Epoch {epoch} / Epoch {epochs} | valid', unit='step')
-#     model.eval()
-#     model.SEmodel.eval()
-    
-#     for noisy, clean, ilen, asr_y in self.loader['val']:
-#         noisy, clean, ilen, asr_y = noisy.to(device), clean.to(device), ilen.to(device), asr_y.to(device)
-        
-#         # predict and calculate loss
-#         loss = model(noisy, clean, ilen, asr_y)
-#         pred = model.SEmodel(noisy)
-#         SEloss = model.SEcriterion(pred, clean)
-        
-#         # record loss
-#         val_loss += loss.item()
-#         SEval_loss += SEloss.item()
-#         progress.update(1)
-        
-#     progress.close()
-#     val_loss /= len(loader['val'])
-#     val_SE_loss /= len(loader['val'])
-#     print(f'val_loss:{val_loss}, SEval_loss:{SEval_loss}')
-    
-#     return val_loss, val_SE_loss
