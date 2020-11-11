@@ -18,6 +18,7 @@ epsilon = np.finfo(float).eps
 
 def get_args():
     parser = argparse.ArgumentParser()
+    parser.add_argument('--TMHINT' , action='store_true')
     parser.add_argument('--data', type=str, default="trdata")
     
     # Input wave file list
@@ -112,12 +113,19 @@ if __name__ == '__main__':
 
     #n_ptfiles =[]
     
+
     c_dict={}
-    for i,c_ in enumerate(tqdm(c_files)):
-        c_tmp=c_.replace('.WAV','').split('/')
-        k=c_tmp[-2]+'_'+c_tmp[-1]
-        c_path=c_.replace(c_tmp[-2]+'/'+c_tmp[-1]+'.WAV','')
-        c_dict[k]=c_path
+    if args.TMHINT:
+        for i,c_ in enumerate(tqdm(c_files)):
+            k=c_.replace('.wav','').split('/')[-1]
+            c_path=c_.replace(k+'.wav','')
+            c_dict[k]=c_path
+    else:
+        for i,c_ in enumerate(tqdm(c_files)):
+            c_tmp=c_.replace('.WAV','').split('/')
+            k=c_tmp[-2]+'_'+c_tmp[-1]
+            c_path=c_.replace(c_tmp[-2]+'/'+c_tmp[-1]+'.WAV','')
+            c_dict[k]=c_path
         
         
     '''
@@ -127,14 +135,20 @@ if __name__ == '__main__':
             os.rmdir(args.spec_path)
     '''
     for i,n_ in enumerate(tqdm(n_files)):
-        ### use noisy filename to find clean file
-        name = n_.split('/')[-1].split('_')[0] + '_' + n_.split('/')[-1].split('_')[1]
-        n_folder = n_.split('/')[-3]+ '/' + n_.split('/')[-2]
-        name=name.replace('.wav','')
-        c_fn=name.split('_')[0]+'/'+name.split('_')[1]+'.WAV'
+        if args.TMHINT:
+            ### use noisy filename to find clean file
+            name = n_.split('/')[-1].replace('.wav','')
+            n_folder = n_.split('/')[-2]
+            c_fn=name + '.wav'
+        else:
+            ### use noisy filename to find clean file
+            name = n_.split('/')[-1].split('_')[0] + '_' + n_.split('/')[-1].split('_')[1]
+            n_folder = n_.split('/')[-3]+ '/' + n_.split('/')[-2]
+            name=name.replace('.wav','')
+            c_fn=name.split('_')[0]+'/'+name.split('_')[1]+'.WAV'
         out_name_c = os.path.join(spec_path+'clean/', name+'.pt')
         out_name_n = out_name_c.replace('clean','noisy/'+n_folder)
-        
+            
         if name in c_dict:
             c_folder=c_dict.pop(name)
             c_ = os.path.join(c_folder, c_fn)
