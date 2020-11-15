@@ -79,18 +79,8 @@ if __name__ == '__main__':
     
     if args.data=='trdata':
         spec_path = os.path.join(spec_path,"train/")
-        #args.spec_path+='train/'
-        #check_folder(os.path.join(os.getcwd(),'data/train/'))
-        #noisy_spec_list='data/train/noisy_spec_filelist.txt'
-        #c_wavfolder_dic='data/train/c_wavfolder_dic.npy'
-        #noisy_wav_list='data/train/noisy_wav_filelist.txt'
     else: 
         spec_path = os.path.join(spec_path,"test/")
-        #args.spec_path+='test/'
-        #check_folder(os.path.join(os.getcwd(),'data/test/'))
-        #noisy_spec_list='data/test/noisy_spec_filelist.txt'
-        #c_wavfolder_dic='data/test/c_wavfolder_dic.npy'
-        #noisy_wav_list='data/test/noisy_wav_filelist.txt'
 
 
     noisy_wav=getfilename(args.noisy_wav_path)
@@ -100,21 +90,10 @@ if __name__ == '__main__':
     n_files = np.array(noisy_wav)
     c_files = np.array(clean_wav)
 
-    '''
-    if os.path.exists(noisy_wav_list):
-            os.remove(noisy_wav_list)
-
-    with open(noisy_wav_list, 'w') as f:
-        for item in noisy_wav:
-            f.write('%s\n' % item)
-    '''
-
-
-
-    #n_ptfiles =[]
-    
-
     c_dict={}
+
+
+
     if args.TMHINT:
         for i,c_ in enumerate(tqdm(c_files)):
             k=c_.replace('.wav','').split('/')[-1]

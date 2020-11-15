@@ -26,13 +26,6 @@ def get_args():
     parser.add_argument('--test_noisy', type=str, default='')
     parser.add_argument('--test_clean', type=str, default='')
     parser.add_argument('--out_path', type=str, default='')
-
-    '''
-    parser.add_argument('--train_noisy', type=str, default="data/train/noisy_spec_filelist.txt")
-    parser.add_argument('--test_noisy', type=str, default="data/test/noisy_spec_filelist.txt")
-    parser.add_argument('--train_noisy_wav', type=str, default="data/train/noisy_wav_filelist.txt")
-    parser.add_argument('--test_noisy_wav', type=str, default="data/test/noisy_wav_filelist.txt")
-    '''
     #####
     parser.add_argument('--epochs', type=int, default=150)
     parser.add_argument('--batch_size', type=int, default=4)  
@@ -41,22 +34,20 @@ def get_args():
     parser.add_argument('--optim', type=str, default='adam')
     parser.add_argument('--SEmodel', type=str, default='transformerencoder_03') 
     #####
-    parser.add_argument('--val_ratio', type=float, default=0.1)
-    parser.add_argument('--train_num', type=int, default=4000)
+    parser.add_argument('--val_ratio', type=float, default = 0.1)
+    parser.add_argument('--train_num', type=int, default = None)
+    parser.add_argument('--test_num', type=int, default = None)
     #####
     parser.add_argument('--ASRmodel_path', type=str, default='data/newctcloss.model.acc.best.entire.pth')
     parser.add_argument('--alpha', type=float, default=0.001) #loss = (1 - self.alpha) * SEloss + self.alpha * ASRloss
     parser.add_argument('--alpha_epoch', type=float, default=70) # alpha = 0 when epoch < alpha_epoch
     parser.add_argument('--asr_y_path', type=str, default='data/data_test.json,data/data_train_dev.json,data/data_train_nodev.json') 
-    #####
-    #parser.add_argument('--tr_c_dic', type=str, default='data/train/c_wavfolder_dic.npy') 
-    #parser.add_argument('--ts_c_dic', type=str, default='data/test/c_wavfolder_dic.npy') 
-    #####
     parser.add_argument('--gpu', type=str, default='0')
     parser.add_argument('--target', type=str, default='MAP') #'MAP' or 'IRM'
     parser.add_argument('--task', type=str, default='DNS_SE') 
     parser.add_argument('--resume' , action='store_true')
     parser.add_argument('--retrain', action='store_true')
+    parser.add_argument('--TMHINT' , action='store_true')
     parser.add_argument('--asr_result', type=str, default=None)
     parser.add_argument('--after_alpha_epoch', action='store_true') # on when test or retrain using after_alpha_epoch model
     parser.add_argument('--re_epochs', type=int, default=150)
@@ -110,6 +101,7 @@ if __name__ == '__main__':
     # control parameter
     for param in model.SEmodel.parameters():
         param.requires_grad = True
+
     for param in model.ASRmodel.parameters():
         param.requires_grad = False
     
@@ -124,7 +116,7 @@ if __name__ == '__main__':
                     device, loader,  writer, args.model_path, args)
         else:
             test(model, device, args.test_noisy, args.test_clean, asr_dict, args.enhance_path, args.score_path, args)
-        
+            
     except KeyboardInterrupt:
         state_dict = {
             'epoch': epoch,
