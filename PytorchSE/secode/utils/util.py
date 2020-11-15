@@ -17,18 +17,27 @@ def getfilename(folder):
                 
     
     print('folder:',folder,', len:',len(fnlist))
+    fnlist=sorted(fnlist)
     return fnlist
 
-def get_cleanwav_dic(clean_wav_path):
+def get_cleanwav_dic(clean_wav_path, TMHINT=None):
     print('get clean wav path:', clean_wav_path)
     clean_wav=getfilename(clean_wav_path)
     c_files = np.array(clean_wav)
     c_dict={}
-    for c_ in c_files:
-        c_tmp=c_.replace('.WAV','').split('/')
-        k=c_tmp[-2]+'_'+c_tmp[-1]
-        c_path=c_.replace(c_tmp[-2]+'/'+c_tmp[-1]+'.WAV','')
-        c_dict[k]=c_path
+
+    if TMHINT:
+        for c_ in c_files:
+            k='/'.join(c_.replace('.wav','').split('/')[-2:])
+            c_path=c_.replace(k+'.wav','')
+            c_dict[k]=c_path
+    else:
+        for c_ in c_files:
+            c_tmp=c_.replace('.WAV','').split('/')
+            k=c_tmp[-2]+'_'+c_tmp[-1]
+            c_path=c_.replace(c_tmp[-2]+'/'+c_tmp[-1]+'.WAV','')
+            c_dict[k]=c_path
+
     return c_dict
 
 
@@ -49,27 +58,6 @@ def cal_score(clean,enhanced):
     s_pesq = pesq(clean, enhanced, 16000)
     
     return round(s_pesq,5), round(s_stoi,5)
-
-
-#def get_filepaths(directory,folders='BabyCry.wav,cafeteria_babble.wav',ftype='.wav'):
-#    file_paths = []
-#    folders = folders.split(',')
-#    with open(directory, 'r') as f:
-#        for line in f:
-#            if str(line.split('/')[-3]) in folders:
-#                file_paths.append(line[:-1])
-#    return file_paths
-
-
-
-    '''
-    for root, directories, files in os.walk(directory):
-        for filename in files:
-            if filename.endswith(ftype):
-                filepath = os.path.join(root, filename)
-                file_paths.append(filepath)  # Add it to the list.
-    return sorted(file_paths)
-    '''
 
 
 def make_spectrum(filename=None, y=None, is_slice=False, feature_type='logmag', mode=None, FRAMELENGTH=400, SHIFT=160, _max=None, _min=None):

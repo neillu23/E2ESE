@@ -13,6 +13,7 @@ from utils.load_asr_data import load_asr_data
 import models.transformerencoder
 import models.BLSTM
 from utils.util import getfilename
+import random
 
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -23,7 +24,6 @@ def save_checkpoint(state, filename='checkpoint.pth.tar'):
 
 def weights_init(m):
     if isinstance(m, nn.Conv1d) or isinstance(m, nn.Linear):
-#         nn.init.xavier_uniform_(m.weight, gain=nn.init.calculate_gain('leaky_relu', 0.3))
         nn.init.xavier_uniform_(m.weight)
         nn.init.zeros_(m.bias)
         
@@ -102,7 +102,7 @@ def Load_y_dict(args):
     asr_y_path = [item for item in args.asr_y_path.split(',')]
     asr_dict = {}
     for json_path in asr_y_path:
-        asr_dict = load_asr_data(json_path,asr_dict)
+        asr_dict = load_asr_data(json_path, asr_dict, args.TMHINT)
     return asr_dict
 
 
@@ -110,10 +110,14 @@ def Load_data(args):
 
     train_paths = []
     val_paths = []
-    #[Neil] Modify fea_path
-    #[Yo] Modify n_files, test/train split(test_size set to  0.1)
     
     train_spec_noisy_list=getfilename(os.path.join(args.out_path,'spec','train/noisy'))
+    random.shuffle(train_spec_noisy_list)
+
+    with open('./train_spec_noisy_list.txt', 'w') as filehandle:
+        for listitem in train_spec_noisy_list:
+            filehandle.write('%s\n' % listitem)
+
     n_files = np.array(train_spec_noisy_list)
     
     if args.train_num is None:
@@ -125,9 +129,10 @@ def Load_data(args):
     asr_y_path = [item for item in args.asr_y_path.split(',')]
     asr_dict = {}
     for json_path in asr_y_path:
-        asr_dict = load_asr_data(json_path,asr_dict)
+        asr_dict = load_asr_data(json_path, asr_dict, args.TMHINT)
 
-    train_dataset, val_dataset = CustomDataset(train_paths, asr_dict), CustomDataset(val_paths, asr_dict)
+    train_dataset, val_dataset = CustomDataset(train_paths, asr_dict, args.TMHINT), CustomDataset(val_paths, asr_dict, args.TMHINT)
+    
     # [Yo] Add padding collate_fn
     loader = { 
         'train':DataLoader(train_dataset, batch_size=args.batch_size,
@@ -139,10 +144,7 @@ def Load_data(args):
     return loader
 
 class CustomDataset(Dataset):
-
-    def __init__(self, paths, asr_dict):   # initial logic happens like transform
-        #[Neil] Modify CustomDataset
-        #[Yo] Modify CustomDataset
+    def __init__(self, paths, asr_dict, TMHINT=None): 
         self.n_paths = paths
         self.asr_dict = asr_dict
         self.noisy = []
@@ -153,11 +155,13 @@ class CustomDataset(Dataset):
  
         for _,p in enumerate(tqdm(self.n_paths)):
             self.noisy += [torch.load(p)]
-            n_folder = '/'.join(p.split('/')[-4:-1])
+            if TMHINT:
+                n_folder = '/'.join(p.split('/')[-3:-1])
+            else:
+                n_folder = '/'.join(p.split('/')[-4:-1])
             self.clean += [torch.load(p.replace(n_folder,"clean"))]
-
-            
             name = p.split('/')[-1].replace('.pt','')
+            
             self.asr_ilen += [self.asr_dict[name][0]]
             self.ars_y += [self.asr_dict[name][1]]
 

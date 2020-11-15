@@ -7,7 +7,7 @@ import numpy as np
 import itertools 
 from tqdm import tqdm
 
-def load_asr_data(json_path,dic):
+def load_asr_data(json_path, dic, TMHINT=None):
     with open(json_path, "rb") as f:
         train_feature = json.load(f)["utts"]
 
@@ -23,11 +23,24 @@ def load_asr_data(json_path,dic):
     dataset = TransformDataset(train, lambda data: converter([load_tr(data)]))
     data1 = dataset[0][1]
     data2 = dataset[0][2]
+    
     for i in tqdm(range(len(name))):
         ilen = data1[i]
         y = data2[i]
-        dic[name[i]]=[ilen,y]
 
+        if TMHINT:
+            speaker=["M1","M2","M3","F1","F2","F3"]
+            tmp=name[i].split("_")
+            if tmp[0] in speaker:
+                if int(tmp[2])>=13:
+                    name_key=int(speaker.index(tmp[0]))*200+(int(tmp[2])-13)*10+int(tmp[3])
+                    dic[str(name_key)]=[ilen,y]
+            else:
+                dic["_".join(tmp[1:])]=[ilen,y]
+
+        else:
+            name_key=name[i]
+            dic[name_key]=[ilen,y]
     return dic
 
 '''
