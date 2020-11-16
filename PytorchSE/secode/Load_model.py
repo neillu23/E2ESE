@@ -13,6 +13,7 @@ from utils.load_asr_data import load_asr_data
 import models.transformerencoder
 import models.BLSTM
 from utils.util import getfilename
+import random
 
 
 def count_parameters(model):
