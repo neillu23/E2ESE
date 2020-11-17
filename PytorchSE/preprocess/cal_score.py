@@ -17,20 +17,21 @@ with open(result_file, newline='') as rf:
         name = res[0]
         pesq = res[1]
         stoi = res[2]
-        key = name.split("/")[-2]
+        key = int(name.split("/")[-2].replace("n","-").replace("dB",""))
         if key not in pesq_score_list:
             pesq_score_list[key] = []
             stoi_score_list[key] = []
         pesq_score_list[key].append(float(pesq))
         stoi_score_list[key].append(float(stoi))
 
+key_list=sorted(pesq_score_list.keys())
 if not os.path.isdir(score_path): 
     os.makedirs(score_path)
 fp = open(os.path.join(score_path,result_file.split("/")[-1]),"w", newline='')
 writer = csv.writer(fp)
 writer.writerow(["SNR", "pesq_avg", "stoi_avg"])
 print("SNR, pesq_avg, stoi_avg")
-for snr in pesq_score_list:
+for snr in key_list:
     pesq_score = np.average(pesq_score_list[snr])
     stoi_score = np.average(stoi_score_list[snr])
     print(snr,pesq_score,stoi_score)
