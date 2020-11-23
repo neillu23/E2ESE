@@ -60,9 +60,9 @@ class BLSTM_03(nn.Module):
         super().__init__()
         
         self.lstm_enc = nn.Sequential(
-            lstm(input_size=257, hidden_size=257, num_layers=3),
+            lstm(input_size=201, hidden_size=201, num_layers=3),
 #             nn.ReLU(),
-#             TimeDistributed(nn.Linear(500, 257, bias=True))
+#             TimeDistributed(nn.Linear(500, 201, bias=True))
         )
     
     def forward(self,x):
@@ -76,8 +76,8 @@ class BLSTM_02(nn.Module):
         super().__init__()
         
         self.lstm_enc = nn.Sequential(
-            Blstm(input_size=257, hidden_size=700, num_layers=3),
-            TimeDistributed(nn.Linear(700, 257, bias=True))
+            Blstm(input_size=201, hidden_size=700, num_layers=3),
+            TimeDistributed(nn.Linear(700, 201, bias=True))
         )
     
     def forward(self,x):
@@ -93,8 +93,8 @@ class BLSTM_01(nn.Module):
         super().__init__()
         
         self.lstm_enc = nn.Sequential(
-            Blstm(input_size=257, hidden_size=300, num_layers=2),
-            nn.Linear(300, 257, bias=True)
+            Blstm(input_size=201, hidden_size=300, num_layers=2),
+            nn.Linear(300, 201, bias=True)
         )
     
     def forward(self,x):
