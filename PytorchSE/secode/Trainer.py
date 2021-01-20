@@ -7,7 +7,7 @@ import librosa, scipy
 import pdb
 import numpy as np
 from scipy.io.wavfile import write as audiowrite
-from utils.util import  check_folder, recons_spec_phase, cal_score, make_spectrum, get_cleanwav_dic, getfilename
+from utils.util import  check_folder, recons_spec_phase, cal_score, make_spectrum, get_clean_file, get_cleanwav_dic, getfilename
 maxv = np.iinfo(np.int16).max
 
 def save_checkpoint(epoch, model, optimizer, best_loss, model_path):
@@ -92,21 +92,8 @@ def train(model, epochs, epoch, best_loss, optimizer,
 
         epoch += 1
 
-def prepare_test(test_file, c_dict, device, TMHINT=None):
-    if TMHINT:
-        ### use noisy filename to find clean file
-        name = test_file.split('/')[-3]+'/'+test_file.split('/')[-1].replace('.wav','')
-        n_folder = '/'.join(test_file.split('/')[-3:-1])
-        c_name = name + '.wav'
-
-    else:
-        name = test_file.split('/')[-1].split('_')[0] + '_' + test_file.split('/')[-1].split('_')[1]
-        n_folder = '/'.join(test_file.split('/')[-4:-1])
-        name = name.replace('.wav','')
-        c_name = name.split('_')[0]+'/'+name.split('_')[1]+'.WAV'
-
-    c_folder=c_dict[name]
-    clean_file= os.path.join(c_folder, c_name)
+def prepare_test(test_file, c_dict, device, corpus="TIMIT"):
+    clean_file, n_folder = get_clean_file(test_file, c_dict, corpus)
 
     n_wav,sr = librosa.load(test_file,sr=16000)
     c_wav,sr = librosa.load(clean_file,sr=16000)
@@ -119,8 +106,8 @@ def prepare_test(test_file, c_dict, device, TMHINT=None):
     return n_spec, n_phase, n_len, c_wav, c_spec, c_phase, n_folder
 
     
-def write_score(model, device, test_file, c_dict, enhance_path, ilen, y, score_path, asr_result,TMHINT=None):
-    n_spec, n_phase, n_len, c_wav, c_spec, c_phase, n_folder = prepare_test(test_file, c_dict,device,TMHINT)
+def write_score(model, device, test_file, c_dict, enhance_path, ilen, y, score_path, asr_result,corpus="TIMIT"):
+    n_spec, n_phase, n_len, c_wav, c_spec, c_phase, n_folder = prepare_test(test_file, c_dict,device,corpus)
     #[Yo] Change prediction
     
     if asr_result!=None:
@@ -174,7 +161,7 @@ def test(model, device, noisy_path, clean_path, asr_dict, enhance_path, score_pa
     else:
         test_files = np.array(getfilename(noisy_path,"test")[:args.test_num])
 
-    c_dict = get_cleanwav_dic(clean_path, args.TMHINT)
+    c_dict = get_cleanwav_dic(clean_path, args.corpus)
     
     #open score file
    
@@ -191,7 +178,7 @@ def test(model, device, noisy_path, clean_path, asr_dict, enhance_path, score_pa
     for test_file in tqdm(test_files):
         name=test_file.split('/')[-1].replace('.wav','')
         ilen, y=asr_dict[name][0],asr_dict[name][1]
-        write_score(model, device, test_file, c_dict, enhance_path, ilen, y, score_path, args.asr_result, args.TMHINT)
+        write_score(model, device, test_file, c_dict, enhance_path, ilen, y, score_path, args.asr_result, args.corpus)
 
     data = pd.read_csv(score_path)
     pesq_mean = data['PESQ'].to_numpy().astype('float').mean()

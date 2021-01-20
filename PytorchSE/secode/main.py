@@ -1,7 +1,8 @@
 import os, argparse, torch, random, sys
 from Trainer import train, test
-from Load_model import Load_SE_model, Load_data, Load_y_dict
+from Load_model import Load_SE_model, Load_data
 from utils.util import check_folder
+from utils.load_asr_data import load_y_dict
 from tensorboardX import SummaryWriter
 from CombinedModel import CombinedModel
 import torch.backends.cudnn as cudnn
@@ -47,7 +48,7 @@ def get_args():
     parser.add_argument('--task', type=str, default='DNS_SE') 
     parser.add_argument('--resume' , action='store_true')
     parser.add_argument('--retrain', action='store_true')
-    parser.add_argument('--TMHINT' , action='store_true')
+    parser.add_argument('--corpus', type=str, default="TIMIT") # corpus: TIMIT, TMHINT, TMHINT_DYS
     parser.add_argument('--asr_result', type=str, default=None)
     parser.add_argument('--after_alpha_epoch', action='store_true') # on when test or retrain using after_alpha_epoch model
     parser.add_argument('--re_epochs', type=int, default=150)
@@ -96,7 +97,7 @@ if __name__ == '__main__':
         # load data into the Loader
         loader = Load_data(args)
     else:
-        asr_dict = Load_y_dict(args)
+        asr_dict = load_y_dict(args)
 
     # control parameter
     for param in model.SEmodel.parameters():

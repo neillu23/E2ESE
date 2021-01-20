@@ -6,8 +6,19 @@ from espnet.utils.io_utils import LoadInputsAndTargets
 import numpy as np
 import itertools 
 from tqdm import tqdm
+from utils.util import get_name_key
 
-def load_asr_data(json_path, dic, TMHINT=None):
+
+def load_y_dict(args):
+    print('Reading json files...')
+    asr_y_path = [item for item in args.asr_y_path.split(',')]
+    asr_dict = {}
+    for json_path in asr_y_path:
+        asr_dict = load_asr_data(json_path, asr_dict, args.corpus)
+    return asr_dict
+
+
+def load_asr_data(json_path, asr_dict, corpus="TIMIT"):
     with open(json_path, "rb") as f:
         train_feature = json.load(f)["utts"]
 
@@ -27,21 +38,11 @@ def load_asr_data(json_path, dic, TMHINT=None):
     for i in tqdm(range(len(name))):
         ilen = data1[i]
         y = data2[i]
+        name_key = get_name_key(name[i], corpus)
+        if name_key:
+            asr_dict[name_key]=[ilen,y]
+    return asr_dict
 
-        if TMHINT:
-            speaker=["M1","M2","M3","F1","F2","F3"]
-            tmp=name[i].split("_")
-            if tmp[0] in speaker:
-                if int(tmp[2])>=13:
-                    name_key=int(speaker.index(tmp[0]))*200+(int(tmp[2])-13)*10+int(tmp[3])
-                    dic[str(name_key)]=[ilen,y]
-            else:
-                dic["_".join(tmp[1:])]=[ilen,y]
-
-        else:
-            name_key=name[i]
-            dic[name_key]=[ilen,y]
-    return dic
 
 '''
 def savetodic(jsonpath,dic):

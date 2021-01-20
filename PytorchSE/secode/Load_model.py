@@ -9,10 +9,10 @@ from torch.utils.data.dataset import Dataset
 import pdb
 from tqdm import tqdm 
 from joblib  import parallel_backend, Parallel, delayed
-from utils.load_asr_data import load_asr_data
+from utils.load_asr_data import load_y_dict
 import models.transformerencoder
 import models.BLSTM
-from utils.util import getfilename
+from utils.util import getfilename, get_clean_file2
 import random
 
 
@@ -98,17 +98,8 @@ def pad_collate(batch):
     
     return xx_pad, yy_pad, torch.tensor(asr_l), asr_y_pad
 
-def Load_y_dict(args):
-    print('Reading json files...')
-    asr_y_path = [item for item in args.asr_y_path.split(',')]
-    asr_dict = {}
-    for json_path in asr_y_path:
-        asr_dict = load_asr_data(json_path, asr_dict, args.TMHINT)
-    return asr_dict
-
 
 def Load_data(args):
-
     train_paths = []
     val_paths = []
     
@@ -121,13 +112,9 @@ def Load_data(args):
     else:
         train_paths,val_paths = train_test_split(n_files[:args.train_num],test_size=args.val_ratio,random_state=999)
     
-    print('Reading json files...')
-    asr_y_path = [item for item in args.asr_y_path.split(',')]
-    asr_dict = {}
-    for json_path in asr_y_path:
-        asr_dict = load_asr_data(json_path, asr_dict, args.TMHINT)
+    asr_dict = load_y_dict(args)
 
-    train_dataset, val_dataset = CustomDataset(train_paths, asr_dict, args.TMHINT), CustomDataset(val_paths, asr_dict, args.TMHINT)
+    train_dataset, val_dataset = CustomDataset(train_paths, asr_dict, args.corpus), CustomDataset(val_paths, asr_dict, args.corpus)
     
     # [Yo] Add padding collate_fn
     loader = { 
@@ -139,8 +126,9 @@ def Load_data(args):
 
     return loader
 
+
 class CustomDataset(Dataset):
-    def __init__(self, paths, asr_dict, TMHINT=None): 
+    def __init__(self, paths, asr_dict, corpus="TIMIT"): 
         self.n_paths = paths
         self.asr_dict = asr_dict
         self.noisy = []
@@ -148,16 +136,11 @@ class CustomDataset(Dataset):
         self.asr_ilen = []
         self.ars_y = []
         print('Reading data...')
- 
+    
         for _,p in enumerate(tqdm(self.n_paths)):
-            self.noisy += [torch.load(p)]
-            if TMHINT:
-                n_folder = '/'.join(p.split('/')[-3:-1])
-            else:
-                n_folder = '/'.join(p.split('/')[-4:-1])
-            self.clean += [torch.load(p.replace(n_folder,"clean"))]
-            name = p.split('/')[-1].replace('.pt','')
-            
+            clean_file, name = get_clean_file2(p, corpus)
+            self.noisy.append(torch.load(p))
+            self.clean.append(torch.load(clean_file))
             self.asr_ilen += [self.asr_dict[name][0]]
             self.ars_y += [self.asr_dict[name][1]]
 
