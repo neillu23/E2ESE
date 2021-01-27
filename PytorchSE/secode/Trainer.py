@@ -7,7 +7,7 @@ import librosa, scipy
 import pdb
 import numpy as np
 from scipy.io.wavfile import write as audiowrite
-from utils.util import  check_folder, recons_spec_phase, cal_score, make_spectrum, get_clean_file, get_cleanwav_dic, getfilename
+from utils.util import  check_folder, recons_spec_phase, cal_score, make_spectrum, noisy2clean_test, get_cleanwav_dic, getfilename
 maxv = np.iinfo(np.int16).max
 
 def save_checkpoint(epoch, model, optimizer, best_loss, model_path):
@@ -93,10 +93,10 @@ def train(model, epochs, epoch, best_loss, optimizer,
         epoch += 1
 
 def prepare_test(test_file, c_dict, device, corpus="TIMIT"):
-    clean_file, n_folder = get_clean_file(test_file, c_dict, corpus)
+    c_file, n_folder = noisy2clean_test(test_file, c_dict, corpus)
 
     n_wav,sr = librosa.load(test_file,sr=16000)
-    c_wav,sr = librosa.load(clean_file,sr=16000)
+    c_wav,sr = librosa.load(c_file,sr=16000)
 
     n_spec,n_phase,n_len = make_spectrum(y=n_wav)
     c_spec,c_phase,c_len = make_spectrum(y=c_wav)

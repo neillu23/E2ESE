@@ -6,7 +6,7 @@ from espnet.utils.io_utils import LoadInputsAndTargets
 import numpy as np
 import itertools 
 from tqdm import tqdm
-from utils.util import get_name_key
+from utils.util import asr2clean
 
 
 def load_y_dict(args):
@@ -24,7 +24,7 @@ def load_asr_data(json_path, asr_dict, corpus="TIMIT"):
 
     converter = CustomConverter(subsampling_factor=1)
     train = make_batchset(train_feature,batch_size=len(train_feature))
-    name=[train[0][i][0] for i in range(len(train_feature))]
+    asr_names = [train[0][i][0] for i in range(len(train_feature))]
     load_tr = LoadInputsAndTargets(
         mode="asr",
         load_output=True,
@@ -35,12 +35,12 @@ def load_asr_data(json_path, asr_dict, corpus="TIMIT"):
     data1 = dataset[0][1]
     data2 = dataset[0][2]
     
-    for i in tqdm(range(len(name))):
+    for i in tqdm(range(len(asr_names))):
         ilen = data1[i]
         y = data2[i]
-        name_key = get_name_key(name[i], corpus)
-        if name_key:
-            asr_dict[name_key]=[ilen,y]
+        clean_name = asr2clean(asr_names[i], corpus)
+        if clean_name:
+            asr_dict[clean_name]=[ilen,y]
     return asr_dict
 
 

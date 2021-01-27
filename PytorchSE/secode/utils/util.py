@@ -9,101 +9,78 @@ import random
 epsilon = np.finfo(float).eps
 
 def getfilename(folder, mode=None):
-
     fnlist=[]
     for dirpath, _, files in os.walk(folder):
         for file_name in files:
             if file_name.endswith(".wav") or file_name.endswith(".WAV") or file_name.endswith(".pt"):
                 fnlist.append(os.path.join(dirpath, file_name))
-                
-    
     print('folder:',folder,', len:',len(fnlist))
-
     fnlist=sorted(fnlist)
     random.shuffle(fnlist)
-
     if mode != None:
         list_name="./"+str(mode)+"_file_list.txt"
         with open(list_name, 'w') as filehandle:
             for listitem in fnlist:
                 filehandle.write('%s\n' % listitem)
-    
     return fnlist
 
 
-def get_name_key(name, corpus="TIMIT"):
-    ### use noisy filename to find asr label name in data.json
+def asr2clean(asr_name, corpus="TIMIT"):
     if corpus == "TIMIT":
-        name_key = name
+        c_name = asr_name
     elif corpus == "TMHINT":
         speaker=["M1","M2","M3","F1","F2","F3"]
-        tmp=name.split("_")
+        tmp=asr_name.split("_")
         if tmp[0] in speaker:
             if int(tmp[2])>=13:
-                name_key=str(int(speaker.index(tmp[0]))*200+(int(tmp[2])-13)*10+int(tmp[3]))
+                c_name=str(int(speaker.index(tmp[0]))*200+(int(tmp[2])-13)*10+int(tmp[3]))
             else:
-                name_key = None
+                c_name = None
         else:
-            name_key = "_".join(tmp[1:])
-    # print("name_key:",name_key)
-    return name_key
+            c_name = "_".join(tmp[1:])
+    return c_name
 
-def get_clean_file2(noisy_file, corpus="TIMIT"):
-    ### use noisy train filename to find clean file
+def noisy2clean_train(n_file, corpus="TIMIT"):
+    # for spectrum .pt file
     if corpus == "TIMIT":
-        n_folder = '/'.join(noisy_file.split('/')[-4:-1])
+        n_folder = '/'.join(n_file.split('/')[-4:-1])
     elif corpus == "TMHINT":
-        n_folder = '/'.join(noisy_file.split('/')[-3:-1])
-    clean_file = noisy_file.replace(n_folder,"clean")
-    name = noisy_file.split('/')[-1].replace('.pt','')
-    # print("name:",name)
-    return clean_file, name
-
-def get_clean_file(test_file, c_dict, corpus="TIMIT"):
-    ### use noisy test file to find clean filename
-    if corpus == "TIMIT":
-        name = test_file.split('/')[-1].split('_')[0] + '_' + test_file.split('/')[-1].split('_')[1]
-        n_folder = '/'.join(test_file.split('/')[-4:-1])
-        name = name.replace('.wav','')
-        c_name = name.split('_')[0]+'/'+name.split('_')[1]+'.WAV'
-
-    elif corpus == "TMHINT":
-        name = test_file.split('/')[-3]+'/'+test_file.split('/')[-1].replace('.wav','')
-        n_folder = '/'.join(test_file.split('/')[-3:-1])
-        c_name = name + '.wav'
-
-    # elif corpus == "TMHINT_DYS":
-    #     name = test_file.split('/')[-1]+'/'+test_file.split('/')[-1].replace('.wav','')
-    #     if test_file.split('/')[-2] == "PairedOne":
-
-        
-    #     n_folder = '/'.join(test_file.split('/')[-3:-1])
-    #     c_name = name + '.wav'
-
-    c_folder=c_dict[name]
-    clean_file= os.path.join(c_folder, c_name)
-
+        n_folder = '/'.join(n_file.split('/')[-3:-1])
+    c_file = n_file.replace(n_folder,"clean")
+    c_name = n_file.split('/')[-1].replace('.pt','')
+    return c_file, c_name
 
 def get_cleanwav_dic(clean_wav_path, corpus="TIMIT"):
     print('get clean wav path:', clean_wav_path)
     clean_wav=getfilename(clean_wav_path)
     c_files = np.array(clean_wav)
     c_dict={}
-
     ### use clean filename to find clean filepath
-    if corpus == "TIMIT":
+    if corpus == "TIMIT" or corpus == "TMHINT":
         for c_ in c_files:
-            c_tmp=c_.replace('.WAV','').split('/')
-            k=c_tmp[-2]+'_'+c_tmp[-1]
-            c_path=c_.replace(c_tmp[-2]+'/'+c_tmp[-1]+'.WAV','')
-            c_dict[k]=c_path
-    elif corpus == "TMHINT":
-        for c_ in c_files:
-            k='/'.join(c_.replace('.wav','').split('/')[-2:])
-            c_path=c_.replace(k+'.wav','')
-            c_dict[k]=c_path
-
+            c_name='/'.join(c_.split('/')[-2:])
+            c_path=c_.replace(c_name,'')
+            c_dict[c_name]=c_path
     return c_dict
+    
+def noisy2clean_test(test_file, c_dict, corpus="TIMIT"):
+    # for waveform .wav file
+    if corpus == "TIMIT":
+        n_folder = '/'.join(test_file.split('/')[-4:-1])
+        c_name = '/'.join([test_file.split('/')[-1].split('_')[0], test_file.split('/')[-1].split('_')[1]])
+        c_name = c_name.replace('.wav','.WAV')
+    elif corpus == "TMHINT":
+        n_folder = '/'.join(test_file.split('/')[-3:-1])
+        c_name = '/'.join([test_file.split('/')[-3], test_file.split('/')[-1]])
+    # elif corpus == "TMHINT_DYS":
+    #     name = test_file.split('/')[-1]+'/'+test_file.split('/')[-1].replace('.wav','')
+    #     if test_file.split('/')[-2] == "PairedOne":
+    #     n_folder = '/'.join(test_file.split('/')[-3:-1])
+    #     c_name = name + '.wav'
+    c_folder = c_dict[c_name]
+    c_file = os.path.join(c_folder, c_name)
+    return c_file, n_folder
+
 
 
 

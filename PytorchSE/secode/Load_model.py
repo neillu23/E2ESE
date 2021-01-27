@@ -12,7 +12,7 @@ from joblib  import parallel_backend, Parallel, delayed
 from utils.load_asr_data import load_y_dict
 import models.transformerencoder
 import models.BLSTM
-from utils.util import getfilename, get_clean_file2
+from utils.util import getfilename, noisy2clean_train
 import random
 
 
@@ -137,12 +137,12 @@ class CustomDataset(Dataset):
         self.ars_y = []
         print('Reading data...')
     
-        for _,p in enumerate(tqdm(self.n_paths)):
-            clean_file, name = get_clean_file2(p, corpus)
-            self.noisy.append(torch.load(p))
-            self.clean.append(torch.load(clean_file))
-            self.asr_ilen += [self.asr_dict[name][0]]
-            self.ars_y += [self.asr_dict[name][1]]
+        for _, n_file in enumerate(tqdm(self.n_paths)):
+            c_file, c_name = noisy2clean_train(n_file, corpus)
+            self.noisy.append(torch.load(n_file))
+            self.clean.append(torch.load(c_file))
+            self.asr_ilen += [self.asr_dict[c_name][0]]
+            self.ars_y += [self.asr_dict[c_name][1]]
 
     def __getitem__(self, index):
         return self.noisy[index], self.clean[index], self.asr_ilen[index], self.ars_y[index]
