@@ -24,9 +24,12 @@ cp out/data_train_nodev.json ../PytorchSE/data/
 python change_data.py $DATA_PATH/timit_fbank.scp $ESPNET_PATH/dump/test/deltafalse/data.json out/data_test.json
 python change_data.py $DATA_PATH/timit_fbank.scp $ESPNET_PATH/dump/train_dev/deltafalse/data.json out/data_train_dev.json
 python change_data.py $DATA_PATH/timit_fbank.scp $ESPNET_PATH/dump/train_nodev/deltafalse/data.json out/data_train_nodev.json
-cp out/data_test.json $ESPNET_PATH/dump/test/deltafalse/data.json ../PytorchSE/data/
-cp out/data_train_dev.json $ESPNET_PATH/dump/train_dev/deltafalse/data.json ../PytorchSE/data/
-cp out/data_train_nodev.json $ESPNET_PATH/dump/train_nodev/deltafalse/data.json ../PytorchSE/data/
+cp out/data_test.json $ESPNET_PATH/dump/test/deltafalse/data.json 
+cp out/data_train_dev.json $ESPNET_PATH/dump/train_dev/deltafalse/data.json 
+cp out/data_train_nodev.json $ESPNET_PATH/dump/train_nodev/deltafalse/data.json 
+cp out/data_test.json ../PytorchSE/data/
+cp out/data_train_dev.json ../PytorchSE/data/
+cp out/data_train_nodev.json ../PytorchSE/data/
 
 # step 3: train & test ASR model
 cd $ESPNET_PATH/
