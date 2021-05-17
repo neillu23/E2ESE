@@ -7,6 +7,40 @@ import numpy as np
 import itertools 
 from tqdm import tqdm
 from utils.util import asr2clean
+from jiwer import wer
+import  speech_recognition as sr
+from scipy.io import wavfile
+# import pdb
+
+
+# Convert `data` to 32 bit integers:
+def convert(data,wav_path,fs=16000):
+    y = (np.iinfo(np.int32).max * (data/np.abs(data).max())).astype(np.int32)
+    wavfile.write(wav_path, fs, y)
+    
+def cal_asr(wav):
+    wav = wav/abs(wav).max()
+    r = sr.Recognizer()
+    convert(wav,'./wavfile.wav')
+#     convert(enhanced,'./enhanced.wav')
+#     librosa.output.write_wav('./clean.wav',clean,sr=16000)
+#     librosa.output.write_wav('./enhanced.wav',enhanced,sr=16000)
+    try:
+        with sr.AudioFile('./wavfile.wav') as source:
+            audio = r.record(source)
+            result = r.recognize_google(audio,language='en-US')
+    except:
+        result = ''
+#         result = result.replace(" ","")
+    return result
+
+def get_clean_txt(c_text):
+    answer = []
+    with open(c_text) as f:
+        lines = f.readlines()
+    lines = lines[0].replace('.\n','')
+    answer.append(' '.join(lines.split(' ')[2:]).lower())
+    return answer
 
 
 def load_y_dict(args):

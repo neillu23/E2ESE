@@ -55,7 +55,7 @@ def get_cleanwav_dic(clean_wav_path, corpus="TIMIT"):
     clean_wav=getfilename(clean_wav_path)
     c_files = np.array(clean_wav)
     c_dict={}
-    ### use clean filename to find clean filepath
+    ### use clean test filename to find clean filepath
     if corpus == "TIMIT" or corpus == "TMHINT":
         for c_ in c_files:
             c_name='/'.join(c_.split('/')[-2:])
