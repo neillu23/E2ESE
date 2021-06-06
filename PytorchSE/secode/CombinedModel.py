@@ -1,7 +1,9 @@
 import torch.nn as nn
+import pdb
 import torch
 import numpy
 import math
+from torch.nn.utils.rnn import pad_sequence
 from espnet.nets.pytorch_backend.nets_utils import to_torch_tensor
 
 class CombinedModel(nn.Module):
@@ -9,7 +11,7 @@ class CombinedModel(nn.Module):
         super(CombinedModel, self).__init__()
         #pretrained ASR model
         self.ASRmodel = torch.load(args.ASRmodel_path)
-        #pretrained or new SE model
+        #SE model
         self.SEmodel = semodel
         self.SEcriterion = secriterion
         self.Fbank = Fbank
@@ -20,12 +22,42 @@ class CombinedModel(nn.Module):
         
         Fbank=self.Fbank()
         enhanced_fbank = Fbank.forward(enhanced)
-        enhanced_fbank_clean = Fbank.forward(clean)
+        #enhanced_fbank_clean = Fbank.forward(clean)
         
         ASRloss = self.ASRmodel(enhanced_fbank,ilen,y)
         #ASRloss = self.ASRmodel(enhanced_fbank,ilen,y,enhanced_fbank_clean,True)
         
         return SEloss, ASRloss
+
+class CombinedModel_VC(nn.Module):
+    def __init__(self, args, semodel=None):
+        super(CombinedModel_VC, self).__init__()
+        #pretrained ASR model
+        self.ASRmodel = torch.load(args.ASRmodel_path)
+        #pretrained VC model
+        if  args.retrain or args.resume:
+            print("Load VC model from:", args.model_path)
+            self.SEmodel = semodel
+            #self.VCmodel_origin = torch.load(args.VCmodel_path)
+        else: #new train
+            print("Load VC model from:", args.VCmodel_path)
+            self.SEmodel = torch.load(args.VCmodel_path)
+            
+            
+    def forward(self, x, ilen, y, pass_ASR=True): 
+        VCloss= self.SEmodel(*x).mean()
+        enhanced=self.SEmodel.after_outs
+        
+        if ilen[0]!=enhanced.shape[1]:
+            tmp = torch.zeros(enhanced.shape[0], ilen[0], enhanced.shape[2]).to(enhanced.device)
+            tmp[:, :enhanced.shape[1], :] = enhanced
+            enhanced = tmp
+
+        if pass_ASR:
+            ASRloss = self.ASRmodel(enhanced,ilen,y)
+        else:
+            ASRloss=0
+        return VCloss, ASRloss
 
 class Fbank(nn.Module):
     def __init__(self,sample_rate=16000,NFFT=400,nfilt=26,gpu=0):
@@ -60,4 +92,3 @@ class Fbank(nn.Module):
         m = torch.nn.LayerNorm([filter_banks.size()[1],filter_banks.size()[0]]).to(self.device)
         filter_banks = torch.transpose(m(torch.transpose(filter_banks,0,2)),0,2)
         return filter_banks
-

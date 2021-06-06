@@ -1,10 +1,12 @@
 import os, argparse, torch, random, sys
 from Trainer import train, test
-from Load_model import Load_SE_model, Load_data
+from Load_model import Load_SE_model, Load_data, Load_data_VC
 from utils.util import check_folder
 from utils.load_asr_data import load_y_dict
 from tensorboardX import SummaryWriter
-from CombinedModel import CombinedModel
+from CombinedModel import CombinedModel, CombinedModel_VC
+from espnet.nets.pytorch_backend.transformer.optimizer import get_std_opt
+from espnet.asr.asr_utils import get_model_conf
 import torch.backends.cudnn as cudnn
 import pandas as pd
 import pdb
@@ -39,7 +41,11 @@ def get_args():
     parser.add_argument('--train_num', type=int, default = None)
     parser.add_argument('--test_num', type=int, default = None)
     #####
-    parser.add_argument('--ASRmodel_path', type=str, default='data/newctcloss.model.acc.best.entire.pth')
+    parser.add_argument('--Espnet_path', type=str, default=None)
+    parser.add_argument('--ASRmodel_path', type=str, default='data/ASRmodel.acc.best.entire')
+    parser.add_argument('--VCmodel_path', type=str, default='data/TTSmodel.pretrained.entire')
+    parser.add_argument('--VC_test_json', type=str, default=None)
+    #####
     parser.add_argument('--alpha', type=float, default=0.001) #loss = (1 - self.alpha) * SEloss + self.alpha * ASRloss
     parser.add_argument('--alpha_epoch', type=float, default=70) # alpha = 0 when epoch < alpha_epoch
     parser.add_argument('--asr_y_path', type=str, default='data/data_test.json,data/data_train_dev.json,data/data_train_nodev.json') 
@@ -89,19 +95,50 @@ if __name__ == '__main__':
     # tensorboard
     writer = SummaryWriter(f'{args.out_path}/logs')
 
-    # load and construct the model
-    semodel, epoch, best_loss, optimizer, secriterion, device = Load_SE_model(args)
-    model = CombinedModel(args, semodel, secriterion)
-
-    if args.mode == 'train':
-        # load data into the Loader
-        loader = Load_data(args)
+    
+    
+    if args.corpus=="TMHINT_DYS":
+        if args.mode == 'test':
+            print("Error: Run test using the VC script!")
+            exit()
+            exit()
+            exit()
+        
+        # TMHINT Train
+        epoch=0
+        args.checkpoint_path=args.checkpoint_path.replace("transformerencoder_03","VCmodel")
+        args.model_path=args.model_path.replace("transformerencoder_03","VCmodel")
+        args.score_path=args.score_path.replace("transformerencoder_03","VCmodel")
+        
+        if args.retrain or args.resume:
+            idim, odim, train_args = get_model_conf(args.model_path, None)
+            semodel, epoch, best_loss, optimizer, criterion, device = Load_SE_model(args, idim, odim, train_args)
+            model = CombinedModel_VC(args,semodel)
+        else:
+            best_loss=1000
+            device = torch.device(f'cuda:{args.gpu}')
+            model = CombinedModel_VC(args)
+        
+        loader = Load_data_VC(args, model.SEmodel.args)
+            
     else:
-        asr_dict = load_y_dict(args)
+        # load and construct the model
+        semodel, epoch, best_loss, optimizer, secriterion, device = Load_SE_model(args)
+        model = CombinedModel(args, semodel, secriterion)
+        if args.mode == 'train':
+            loader = Load_data(args)
+        else:
+            asr_dict = load_y_dict(args)
+
+
 
     # control parameter
-    for param in model.SEmodel.parameters():
-        param.requires_grad = True
+    if args.mode == 'train':
+        for param in model.SEmodel.parameters():
+            param.requires_grad = True
+    else:
+        for param in model.SEmodel.parameters():
+            param.requires_grad = False
 
     for param in model.ASRmodel.parameters():
         param.requires_grad = False
@@ -109,13 +146,17 @@ if __name__ == '__main__':
     if args.retrain:
         args.epochs = args.re_epochs 
     
-    # Trainer = Trainer(model, args.epochs, epoch, best_loss, optimizer, 
-                    #   criterion, device, loader, args.test_noisy_wav, writer, model_path, score_path, args)
+    
     try:
         if args.mode == 'train':
+            if args.corpus=="TMHINT_DYS":
+                # --adim, default=384, type=int, "Number of attention transformation dimensions"
+                optimizer = get_std_opt(model.SEmodel.parameters(), 384, model.SEmodel.args.transformer_warmup_steps, model.SEmodel.args.transformer_lr)
             train(model, args.epochs, epoch, best_loss, optimizer, 
                     device, loader,  writer, args.model_path, args)
-        else:
+        
+        # mode=="test"
+        else: 
             test(model, device, args.test_noisy, args.test_clean, asr_dict, args.enhance_path, args.score_path, args)
             
     except KeyboardInterrupt:

@@ -5,8 +5,11 @@ from pystoi.stoi import stoi
 import scipy
 import tqdm
 import random
+import pdb
 
 epsilon = np.finfo(float).eps
+
+
 
 def getfilename(folder, mode=None):
     fnlist=[]
@@ -38,6 +41,10 @@ def asr2clean(asr_name, corpus="TIMIT"):
                 c_name = None
         else:
             c_name = "_".join(tmp[1:])
+    elif corpus == "TMHINT_DYS":
+        num=int(asr_name.split("_")[-1])
+        c_name=asr_name.split("_")[-2]+"_%02d%02d"%(((num-1)/10)+1,(num-1)%10+1)
+
     return c_name
 
 def noisy2clean_train(n_file, corpus="TIMIT"):

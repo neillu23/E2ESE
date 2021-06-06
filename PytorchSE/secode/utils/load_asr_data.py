@@ -43,29 +43,3 @@ def load_asr_data(json_path, asr_dict, corpus="TIMIT"):
             asr_dict[clean_name]=[ilen,y]
     return asr_dict
 
-
-'''
-def savetodic(jsonpath,dic):
-    
-    dataset, name=data_prepare(train_feature)
-
-    for i in tqdm(range(len(name))):
-        ilen = dataset[0][1][i]
-        y = dataset[0][2][i]
-        dic[name[i]]=[ilen,y]
-    
-    return dic
-
-if __name__ == "__main__":
-    dic={}
-    jsonpath1='./data_test.json'
-    jsonpath2='./data_train_dev.json'
-    jsonpath3='./data_train_nodev.json'
-
-    dic=savetodic(jsonpath1,dic)
-    dic=savetodic(jsonpath2,dic)
-    dic=savetodic(jsonpath3,dic)
-
-    #np.save('file_manner_y.npy', dic) 
-   
-'''

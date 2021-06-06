@@ -1,6 +1,7 @@
 import torch.nn as nn
 import torch
 import pandas as pd
+import math
 import os, sys
 from tqdm import tqdm
 import librosa, scipy
@@ -20,7 +21,7 @@ def save_checkpoint(epoch, model, optimizer, best_loss, model_path):
     check_folder(model_path)
     torch.save(state_dict, model_path)
     
-def train_epoch(model, optimizer, device, loader, epoch, epochs, mode, alpha):
+def train_epoch(model, optimizer, device, loader, epoch, epochs, mode, alpha, args):
     train_loss = 0
     train_SE_loss = 0
     train_ASR_loss = 0
@@ -33,26 +34,68 @@ def train_epoch(model, optimizer, device, loader, epoch, epochs, mode, alpha):
         model.SEmodel.eval()
         torch.no_grad()
 
-    for noisy, clean, ilen, asr_y in loader[mode]:
-        noisy, clean, ilen, asr_y = noisy.to(device), clean.to(device), ilen.to(device), asr_y.to(device)
-        
-        # predict and calculate loss
-        SEloss, ASRloss = model(noisy, clean, ilen, asr_y)
-        loss = (1 - alpha) * SEloss + alpha * ASRloss
+    if args.corpus=="TMHINT_DYS":
+        for x, ilen, asr_y in loader[mode]:
+            x=tuple(    [     torch.stack(tuple([i.to(device) for i in item])).to(device)    for item in x]    )
+            asr_y=torch.stack(tuple([item_y.to(device) for item_y in asr_y])).to(device)
+            ilen =ilen.to(device)
+            # predict and calculate loss
+            
+            if epoch<args.alpha_epoch:
+                SEloss, ASRloss = model(x, ilen, asr_y, pass_ASR=False)
+            else:
+                SEloss, ASRloss = model(x, ilen, asr_y, pass_ASR=True)
+            
+            grad_clip=1.0
+            grad_norm = torch.nn.utils.clip_grad_norm_(model.SEmodel.parameters(), grad_clip)
+            if math.isnan(grad_norm):
+                SEloss=0
 
-        # train the model
-        if mode == 'train':
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-        else:
-            torch.no_grad()
+            loss = (1 - alpha) * SEloss + alpha * ASRloss
 
-        # record loss
-        train_loss += loss.detach().item()
-        train_SE_loss += SEloss.detach().item()
-        train_ASR_loss += ASRloss.detach().item()
-        progress.update(1)
+            # train the model
+            if mode == 'train':
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+            else:
+                torch.no_grad()
+
+            # record loss
+            train_loss += loss.detach().item()
+            train_SE_loss += SEloss.detach().item()
+            if type(ASRloss)==int:
+                train_ASR_loss += ASRloss
+            else:
+                train_ASR_loss += ASRloss.detach().item()
+            progress.update(1)
+            
+
+            del x, ilen, asr_y
+            del loss, SEloss, ASRloss
+
+
+    else:
+        for noisy, clean, ilen, asr_y in loader[mode]:
+            noisy, clean, ilen, asr_y = noisy.to(device), clean.to(device), ilen.to(device), asr_y.to(device)
+            
+            # predict and calculate loss
+            SEloss, ASRloss = model(noisy, clean, ilen, asr_y)
+            loss = (1 - alpha) * SEloss + alpha * ASRloss
+
+            # train the model
+            if mode == 'train':
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+            else:
+                torch.no_grad()
+
+            # record loss
+            train_loss += loss.detach().item()
+            train_SE_loss += SEloss.detach().item()
+            train_ASR_loss += ASRloss.detach().item()
+            progress.update(1)
    
     progress.close()
     train_loss = train_loss/len(loader[mode])
@@ -64,8 +107,16 @@ def train_epoch(model, optimizer, device, loader, epoch, epochs, mode, alpha):
 def train(model, epochs, epoch, best_loss, optimizer, 
          device, loader, writer, model_path, args):
     print('Training...')
+    
+    if epoch==0:
+        path=model_path.replace("VCmodel","TTSmodel_baseline")
+        print(f"Save TTS model (without VC & ASR) to '{path}'")
+        save_checkpoint(epoch, model.SEmodel, optimizer, best_loss, path)
+        #torch.save(model.SEmodel, path+'.entire',_use_new_zipfile_serialization=False)
+        torch.save(model.SEmodel.state_dict(), path.replace("VCmodel","param_TTSmodel"))
 
-    model = model.to(device)
+    model.SEmodel = model.SEmodel.to(device)
+    model.ASRmodel = model.ASRmodel.to(device)
     while epoch < epochs:
         # add for 2 stage training 
         alpha = args.alpha
@@ -74,8 +125,8 @@ def train(model, epochs, epoch, best_loss, optimizer,
         if epoch == args.alpha_epoch:
             best_loss = 100
 
-        train_SE_loss, train_ASR_loss = train_epoch(model, optimizer, device, loader, epoch, epochs, "train",alpha)
-        val_SE_loss, val_ASR_loss = train_epoch(model, optimizer, device, loader, epoch, epochs,"val",alpha)
+        train_SE_loss, train_ASR_loss = train_epoch(model, optimizer, device, loader, epoch, epochs, "train",alpha, args)
+        val_SE_loss, val_ASR_loss = train_epoch(model, optimizer, device, loader, epoch, epochs,"val",alpha, args)
 
         train_loss=(1 - alpha) * train_SE_loss + alpha * train_ASR_loss
         val_loss=(1 - alpha) * val_SE_loss + alpha * val_ASR_loss
@@ -83,12 +134,20 @@ def train(model, epochs, epoch, best_loss, optimizer,
         writer.add_scalars(f'{args.task}/{model.SEmodel.__class__.__name__}_{args.optim}_{args.loss_fn}', {'train': train_loss, 'train_SE': train_SE_loss},epoch)
         writer.add_scalars(f'{args.task}/{model.SEmodel.__class__.__name__}_{args.optim}_{args.loss_fn}', {'val': val_loss, 'val_SE': val_SE_loss},epoch)
         
-        if best_loss > val_loss:
+    
+        #if best_loss > val_loss:
+        if (epoch+1)%10==0:
             if epoch >= args.alpha_epoch and "after_alpha_epoch" not in model_path:
                 model_path = model_path.replace("_alpha_epoch","_after_alpha_epoch")
-            print(f"Save SE model to '{model_path}'")
-            save_checkpoint(epoch,model.SEmodel, optimizer, best_loss, model_path)
-            best_loss = val_loss
+            if args.corpus=="TMHINT_DYS":
+                model_path_save=model_path.replace( "transformerencoder_03" ,"VCmodel")
+            print(f"Save SE model to '{model_path_save}'")
+            save_checkpoint(epoch, model.SEmodel, optimizer, val_loss, model_path_save)
+            torch.save(model.SEmodel.state_dict(), model_path_save.replace("VCmodel","param_VCmodel"))
+            
+            #best_loss = val_loss
+
+
 
         epoch += 1
 
