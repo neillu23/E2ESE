@@ -16,16 +16,17 @@ class CombinedModel(nn.Module):
         self.SEcriterion = secriterion
         self.Fbank = Fbank
             
-    def forward(self, noisy, clean, ilen, y):
+    def forward(self, noisy, clean, ilen, y, without_asr=False):
         enhanced = self.SEmodel(noisy)
         SEloss = self.SEcriterion(enhanced, clean)
         
-        Fbank=self.Fbank()
-        enhanced_fbank = Fbank.forward(enhanced)
-        #enhanced_fbank_clean = Fbank.forward(clean)
-        
-        ASRloss = self.ASRmodel(enhanced_fbank,ilen,y)
-        #ASRloss = self.ASRmodel(enhanced_fbank,ilen,y,enhanced_fbank_clean,True)
+        ASRloss = 0
+        if not without_asr:
+            Fbank=self.Fbank()
+            enhanced_fbank = Fbank.forward(enhanced)
+            enhanced_fbank_clean = Fbank.forward(clean)
+            #ASRloss = self.ASRmodel(enhanced_fbank,ilen,y)
+            ASRloss = self.ASRmodel(enhanced_fbank,ilen,y,enhanced_fbank_clean,True)
         
         return SEloss, ASRloss
 

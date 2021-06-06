@@ -9,9 +9,9 @@ from espnet.nets.pytorch_backend.transformer.optimizer import get_std_opt
 from espnet.asr.asr_utils import get_model_conf
 import torch.backends.cudnn as cudnn
 import pandas as pd
-import pdb
+# import pdb
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "9"
+os.environ["CUDA_VISIBLE_DEVICES"] = "4"
 # fix random
 SEED = 999
 random.seed(SEED)
@@ -47,7 +47,7 @@ def get_args():
     parser.add_argument('--VC_test_json', type=str, default=None)
     #####
     parser.add_argument('--alpha', type=float, default=0.001) #loss = (1 - self.alpha) * SEloss + self.alpha * ASRloss
-    parser.add_argument('--alpha_epoch', type=float, default=70) # alpha = 0 when epoch < alpha_epoch
+    parser.add_argument('--alpha_epoch', type=int, default=70) # alpha = 0 when epoch < alpha_epoch
     parser.add_argument('--asr_y_path', type=str, default='data/data_test.json,data/data_train_dev.json,data/data_train_nodev.json') 
     parser.add_argument('--gpu', type=str, default='0')
     parser.add_argument('--target', type=str, default='MAP') #'MAP' or 'IRM'
@@ -56,6 +56,7 @@ def get_args():
     parser.add_argument('--retrain', action='store_true')
     parser.add_argument('--corpus', type=str, default="TIMIT") # corpus: TIMIT, TMHINT, TMHINT_DYS
     parser.add_argument('--asr_result', type=str, default=None)
+    parser.add_argument('--tag', type=str, default="")
     parser.add_argument('--after_alpha_epoch', action='store_true') # on when test or retrain using after_alpha_epoch model
     parser.add_argument('--re_epochs', type=int, default=150)
     parser.add_argument('--checkpoint', type=str, default=None)
@@ -64,13 +65,16 @@ def get_args():
     return args
 
 def get_path(args):
-    args.checkpoint_path = f'{args.out_path}/checkpoint/{args.SEmodel}_{args.target}_epochs{args.epochs}' \
+    tag_str = ""
+    if args.tag:
+        tag_str = "_" + args.tag
+    args.checkpoint_path = f'{args.out_path}/checkpoint/{args.SEmodel}{tag_str}_{args.target}_epochs{args.epochs}' \
                     f'_{args.optim}_{args.loss_fn}_alpha{args.alpha}_alpha_epoch{args.alpha_epoch}_batch{args.batch_size}_'\
                     f'lr{args.lr}.pth.tar'
-    args.model_path = f'{args.out_path}/save_model/{args.SEmodel}_{args.target}_epochs{args.epochs}' \
+    args.model_path = f'{args.out_path}/save_model/{args.SEmodel}{tag_str}_{args.target}_epochs{args.epochs}' \
                     f'_{args.optim}_{args.loss_fn}_alpha{args.alpha}_alpha_epoch{args.alpha_epoch}_batch{args.batch_size}_'\
                     f'lr{args.lr}.pth.tar'
-    args.score_path = f'{args.out_path}/Result/{args.SEmodel}_{args.target}_epochs{args.epochs}' \
+    args.score_path = f'{args.out_path}/Result/{args.SEmodel}{tag_str}_{args.target}_epochs{args.epochs}' \
                     f'_{args.optim}_{args.loss_fn}_alpha{args.alpha}_alpha_epoch{args.alpha_epoch}_batch{args.batch_size}_'\
                     f'lr{args.lr}.csv'
 
@@ -143,8 +147,8 @@ if __name__ == '__main__':
     for param in model.ASRmodel.parameters():
         param.requires_grad = False
     
-    if args.retrain:
-        args.epochs = args.re_epochs 
+    # if args.retrain:
+    #     args.epochs = args.re_epochs 
     
     
     try:

@@ -5,10 +5,12 @@ import math
 import os, sys
 from tqdm import tqdm
 import librosa, scipy
-import pdb
+# import pdb
 import numpy as np
 from scipy.io.wavfile import write as audiowrite
 from utils.util import  check_folder, recons_spec_phase, cal_score, make_spectrum, noisy2clean_test, get_cleanwav_dic, getfilename
+from utils.load_asr_data import cal_asr, get_clean_txt
+import jiwer 
 maxv = np.iinfo(np.int16).max
 
 def save_checkpoint(epoch, model, optimizer, best_loss, model_path):
@@ -153,6 +155,7 @@ def train(model, epochs, epoch, best_loss, optimizer,
 
 def prepare_test(test_file, c_dict, device, corpus="TIMIT"):
     c_file, n_folder = noisy2clean_test(test_file, c_dict, corpus)
+    c_text = c_file.replace(".WAV",".TXT")
 
     n_wav,sr = librosa.load(test_file,sr=16000)
     c_wav,sr = librosa.load(c_file,sr=16000)
@@ -162,13 +165,13 @@ def prepare_test(test_file, c_dict, device, corpus="TIMIT"):
 
     n_spec = torch.from_numpy(n_spec.transpose()).to(device).unsqueeze(0)
     c_spec = torch.from_numpy(c_spec.transpose()).to(device).unsqueeze(0)
-    return n_spec, n_phase, n_len, c_wav, c_spec, c_phase, n_folder
+    return n_spec, n_phase, n_len, c_wav, c_spec, c_phase, c_text, n_folder
 
     
 def write_score(model, device, test_file, c_dict, enhance_path, ilen, y, score_path, asr_result,corpus="TIMIT"):
-    n_spec, n_phase, n_len, c_wav, c_spec, c_phase, n_folder = prepare_test(test_file, c_dict,device,corpus)
+    n_spec, n_phase, n_len, c_wav, c_spec, c_phase, c_text, n_folder = prepare_test(test_file, c_dict,device,corpus)
+    google_asr = True
     #[Yo] Change prediction
-    
     if asr_result!=None:
         ### Get ASR prediction results
         Fbank=model.Fbank()
@@ -194,6 +197,28 @@ def write_score(model, device, test_file, c_dict, enhance_path, ilen, y, score_p
         s_pesq, s_stoi = cal_score(c_wav,recon_wav)
         with open(score_path, 'a') as f:
             f.write(f'{test_file},{s_pesq},{s_stoi},{asr_cer}\n')
+    elif google_asr:
+        enhanced_spec = model.SEmodel(n_spec).cpu().detach().numpy()
+        enhanced = recons_spec_phase(enhanced_spec.squeeze().transpose(),n_phase,n_len)
+        
+        # cal score
+        s_pesq, s_stoi = cal_score(c_wav,enhanced)
+
+        # cal asr
+        result = cal_asr(enhanced)
+        c_result = cal_asr(c_wav)
+        answer = get_clean_txt(c_text)
+        error  = jiwer.wer(answer,result)
+        clean_error = jiwer.wer(answer,c_result)
+
+        with open(score_path, 'a') as f:
+            f.write(f'{test_file},{s_pesq},{s_stoi},{error},{clean_error}\n')
+            
+        # write enhanced waveform
+        out_path = f"{enhance_path}/{n_folder+'/'+test_file.split('/')[-1]}"
+        check_folder(out_path)
+        audiowrite(out_path,16000,(enhanced* maxv).astype(np.int16))
+
     else:
         enhanced_spec = model.SEmodel(n_spec).cpu().detach().numpy()
         enhanced = recons_spec_phase(enhanced_spec.squeeze().transpose(),n_phase,n_len)
@@ -205,6 +230,8 @@ def write_score(model, device, test_file, c_dict, enhance_path, ilen, y, score_p
         out_path = f"{enhance_path}/{n_folder+'/'+test_file.split('/')[-1]}"
         check_folder(out_path)
         audiowrite(out_path,16000,(enhanced* maxv).astype(np.int16))
+
+
 
         
             
@@ -223,15 +250,22 @@ def test(model, device, noisy_path, clean_path, asr_dict, enhance_path, score_pa
     c_dict = get_cleanwav_dic(clean_path, args.corpus)
     
     #open score file
-   
+    google_asr = True
+    if google_asr:
+        score_path = score_path.replace(".csv","_wer.csv") 
+
     if os.path.exists(score_path):
         os.remove(score_path)
     
     check_folder(score_path)
-    print('Save PESQ&STOI results to:', score_path)
-    
-    with open(score_path, 'a') as f:
-        f.write('Filename,PESQ,STOI\n')
+    if google_asr:
+        print('Save WER results to:', score_path)
+        with open(score_path, 'a') as f:
+            f.write('Filename,PESQ,STOI,WER,CleanWER\n')
+    else:
+        print('Save PESQ&STOI results to:', score_path)
+        with open(score_path, 'a') as f:
+            f.write('Filename,PESQ,STOI\n')
 
     print('Testing...')       
     for test_file in tqdm(test_files):
